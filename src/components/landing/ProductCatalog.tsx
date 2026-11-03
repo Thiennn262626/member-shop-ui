@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Search, Sparkles, Star, SlidersHorizontal, ShoppingBag, Store } from 'lucide-react';
+import { Search, Sparkles, Star, SlidersHorizontal, ShoppingBag, Store, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { mockDb, SHOP_CONFIG } from '../../services/mockDb';
 import type { Product, SelectedOptionChoice, ShopConfig } from '../../types';
@@ -255,6 +255,14 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                         {product.fakePrice && product.fakePrice > product.price && (
                           <div className="text-[10px] sm:text-xs text-stone-400 line-through">
                             {formatCurrency(product.fakePrice)}
+                          </div>
+                        )}
+                        {product.allowPointRedemption && (
+                          <div className="mt-0.5">
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-1.5 py-0.5 rounded-md shadow-2xs">
+                              <Gift className="w-2.5 h-2.5 text-amber-700" />
+                              <span>Đổi: {product.pointsRequiredToRedeem || Math.round(product.price / (shopConfig.pointToVndRatio || 1000))}đ</span>
+                            </span>
                           </div>
                         )}
                       </div>

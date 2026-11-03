@@ -15,6 +15,7 @@ import {
   Croissant,
   X,
   AlertCircle,
+  Gift,
 } from 'lucide-react';
 import { mockDb, OPTION_PRESETS } from '../../services/mockDb';
 import type { AdminRole, ItemOptionGroup, Product } from '../../types';
@@ -116,6 +117,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formTag, setFormTag] = useState<Product['tag'] | ''>('');
   const [formIsActive, setFormIsActive] = useState(true);
+  const [formAllowPointRedemption, setFormAllowPointRedemption] = useState(true);
+  const [formPointsRequiredToRedeem, setFormPointsRequiredToRedeem] = useState<number>(35);
   const [formOptionGroups, setFormOptionGroups] = useState<ItemOptionGroup[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -159,6 +162,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   // Mở modal Thêm mới
   const handleOpenAddModal = () => {
     if (isCashier) return;
+    const shopCfg = mockDb.getShopConfig();
+    const suggestedPoints = Math.max(1, Math.round(35000 / (shopCfg.pointToVndRatio || 1000)));
+
     setEditingProduct(null);
     setFormName('');
     setFormCategory('Bánh Nướng Nóng');
@@ -169,6 +175,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
     setFormImageUrl(SAMPLE_IMAGE_LIBRARY[0].url);
     setFormTag('');
     setFormIsActive(true);
+    setFormAllowPointRedemption(true);
+    setFormPointsRequiredToRedeem(suggestedPoints);
     setFormOptionGroups([]);
     setFormError(null);
     setIsModalOpen(true);
@@ -177,6 +185,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   // Mở modal Chỉnh sửa
   const handleOpenEditModal = (p: Product) => {
     if (isCashier) return;
+    const shopCfg = mockDb.getShopConfig();
+    const suggestedPoints = Math.max(1, Math.round(p.price / (shopCfg.pointToVndRatio || 1000)));
+
     setEditingProduct(p);
     setFormName(p.name);
     setFormCategory(p.category);
@@ -187,6 +198,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
     setFormImageUrl(p.imageUrl);
     setFormTag(p.tag || '');
     setFormIsActive(p.isActive);
+    setFormAllowPointRedemption(p.allowPointRedemption ?? true);
+    setFormPointsRequiredToRedeem(p.pointsRequiredToRedeem ?? suggestedPoints);
     setFormOptionGroups(p.optionGroups ? JSON.parse(JSON.stringify(p.optionGroups)) : []);
     setFormError(null);
     setIsModalOpen(true);
@@ -222,6 +235,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
         unit: formUnit.trim() || 'phần',
         tag: (formTag as Product['tag']) || undefined,
         isActive: formIsActive,
+        allowPointRedemption: formAllowPointRedemption,
+        pointsRequiredToRedeem: formAllowPointRedemption ? Math.max(1, Number(formPointsRequiredToRedeem) || 1) : undefined,
         rating: editingProduct?.rating || 5.0,
         soldCount: editingProduct?.soldCount || 0,
         optionGroups: formOptionGroups.length > 0 ? formOptionGroups : undefined,
@@ -487,6 +502,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
                           </div>
                         )}
                         <span className="text-[10px] text-stone-400">/{p.unit}</span>
+                        {p.allowPointRedemption && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                              <Gift className="w-2.5 h-2.5 text-amber-600" />
+                              <span>Đổi: {p.pointsRequiredToRedeem || Math.round(p.price / 1000)} điểm</span>
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Option Groups */}
@@ -802,6 +825,62 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
                     onChange={(e) => setFormDescription(e.target.value)}
                     className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs text-stone-900 focus:outline-none focus:border-amber-600 focus:bg-white resize-none"
                   />
+                </div>
+
+                {/* CẤU HÌNH ĐỔI ĐIỂM THƯỞNG LẤY SẢN PHẨM */}
+                <div className="bg-amber-50/70 border border-amber-200/90 rounded-2xl p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formAllowPointRedemption}
+                        onChange={(e) => setFormAllowPointRedemption(e.target.checked)}
+                        className="w-4 h-4 text-amber-600 rounded border-stone-300 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <Gift className="w-4 h-4 text-amber-600" />
+                        <span>Cho phép khách dùng điểm thưởng để đổi món này (Giá 0đ)</span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {formAllowPointRedemption && (
+                    <div className="space-y-2 pt-2 border-t border-amber-200/60">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-semibold text-stone-700 whitespace-nowrap">
+                            Số điểm cần để đổi:
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={formPointsRequiredToRedeem}
+                            onChange={(e) => setFormPointsRequiredToRedeem(Math.max(1, Number(e.target.value)))}
+                            className="w-24 px-3 py-1.5 bg-white border border-amber-300 rounded-xl text-xs font-mono font-bold text-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                          <span className="text-xs font-bold text-amber-900">điểm</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cfg = mockDb.getShopConfig();
+                            const calc = Math.max(1, Math.round(formPrice / (cfg.pointToVndRatio || 1000)));
+                            setFormPointsRequiredToRedeem(calc);
+                          }}
+                          className="px-2.5 py-1.5 bg-white hover:bg-amber-100 border border-amber-300 rounded-xl text-[11px] font-semibold text-amber-900 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
+                        >
+                          ⚡ Gợi ý theo tỷ lệ tiệm ({Math.max(1, Math.round(formPrice / (mockDb.getShopConfig().pointToVndRatio || 1000)))} điểm)
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] text-amber-900/80 leading-relaxed">
+                        💡 Tỷ lệ hiện tại của tiệm: <strong>1 điểm = {formatCurrency(mockDb.getShopConfig().pointToVndRatio || 1000)}</strong>.
+                        Khách tích lũy đủ {formPointsRequiredToRedeem} điểm có thể bấm đổi trực tiếp món này trong giỏ hàng hoặc tại quầy thu ngân.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* CẤU HÌNH NHÓM TÙY CHỌN (OPTION GROUPS: SIZE, TOPPING) */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Trash2,
@@ -15,12 +15,21 @@ import {
   Clock,
   Calendar,
   CheckCircle2,
+  Gift,
+  User,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../../context/CartContext';
-import { mockDb, SHOP_CONFIG } from '../../services/mockDb';
-import type { Order, Voucher } from '../../types';
+import { mockDb, SHOP_CONFIG, TIER_CONFIG } from '../../services/mockDb';
+import type { Customer, Order, Voucher } from '../../types';
 import { formatCurrency } from '../../utils/format';
+
+const TIER_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  MEMBER: { label: 'Hội Viên Thân Thiết', icon: '🌱', color: 'text-stone-700 bg-stone-100 border-stone-300' },
+  SILVER: { label: 'Hội Viên Bạc', icon: '🥈', color: 'text-slate-800 bg-slate-100 border-slate-300' },
+  GOLD: { label: 'Hội Viên Vàng', icon: '👑', color: 'text-amber-900 bg-amber-100 border-amber-300' },
+  DIAMOND: { label: 'Hội Viên Kim Cương', icon: '💎', color: 'text-cyan-900 bg-cyan-100 border-cyan-300' },
+};
 
 interface CartDrawerProps {
   onOrderCreated: (order: Order) => void;
@@ -34,6 +43,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [orderNote, setOrderNote] = useState('');
+
+  // Thông tin hội viên & Đổi điểm thưởng
+  const [matchedCustomer, setMatchedCustomer] = useState<Customer | null>(null);
+  const [discountPointsUsed, setDiscountPointsUsed] = useState<number>(0);
+  const [redeemedCartItemIds, setRedeemedCartItemIds] = useState<string[]>([]);
 
   // Giao hàng / Nhận tại quán
   const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
@@ -71,13 +85,53 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
     };
   }, []);
 
-  // Tính phí ship tự động từ mockDb (không hardcode)
-  const shippingFee = mockDb.calculateShippingFee(totalAmount, fulfillmentType);
+  // Dọn dẹp các món đã chọn đổi điểm nếu món đó bị xóa khỏi giỏ
+  useEffect(() => {
+    const itemIds = new Set(items.map((i) => i.id));
+    setRedeemedCartItemIds((prev) => prev.filter((id) => itemIds.has(id)));
+  }, [items]);
 
-  // Tái kiểm tra voucher khi subtotal thay đổi
+  // Xử lý đổi điểm theo tỷ lệ của tiệm
+  const pointToVnd = shopConfig.pointToVndRatio || 1000;
+  const customerAvailablePoints = matchedCustomer ? matchedCustomer.availablePoints : 0;
+
+  // Tính các món trong giỏ được chọn đổi bằng điểm
+  const redeemedItems = useMemo(() => {
+    return items.filter((item) => redeemedCartItemIds.includes(item.id));
+  }, [items, redeemedCartItemIds]);
+
+  // Tổng số điểm cần để đổi các món đã chọn (mỗi món đổi 1 cái)
+  const totalPointsRedeemedItems = useMemo(() => {
+    return redeemedItems.reduce((sum, item) => {
+      const pts = item.product.pointsRequiredToRedeem || Math.max(1, Math.round(item.unitPrice / pointToVnd));
+      return sum + pts;
+    }, 0);
+  }, [redeemedItems, pointToVnd]);
+
+  // Tổng giá trị tiền của các món được đổi bằng điểm (được giảm 100% cho 1 món)
+  const itemRedemptionValue = useMemo(() => {
+    return redeemedItems.reduce((sum, item) => sum + item.unitPrice, 0);
+  }, [redeemedItems]);
+
+  // Tạm tính sau khi trừ các món đổi bằng điểm
+  const adjustedSubtotal = Math.max(0, totalAmount - itemRedemptionValue);
+
+  // Số điểm còn lại có thể dùng để giảm tiền mặt (sau khi đã trừ điểm đổi món)
+  const remainingPointsForCash = Math.max(0, customerAvailablePoints - totalPointsRedeemedItems);
+  const maxAllowedCashDiscountPoints = Math.min(
+    remainingPointsForCash,
+    Math.floor(Math.max(0, adjustedSubtotal - voucherDiscount) / pointToVnd)
+  );
+  const validDiscountPoints = Math.min(discountPointsUsed, maxAllowedCashDiscountPoints);
+  const pointsCashDiscount = validDiscountPoints * pointToVnd;
+
+  // Tính phí ship tự động từ mockDb theo adjustedSubtotal
+  const shippingFee = mockDb.calculateShippingFee(adjustedSubtotal, fulfillmentType);
+
+  // Tái kiểm tra voucher khi adjustedSubtotal thay đổi
   useEffect(() => {
     if (appliedVoucher) {
-      const result = mockDb.validateAndCalculateVoucher(appliedVoucher.code, totalAmount);
+      const result = mockDb.validateAndCalculateVoucher(appliedVoucher.code, adjustedSubtotal);
       if (result.isValid) {
         setVoucherDiscount(result.discountAmount);
         setVoucherError(null);
@@ -87,7 +141,50 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
         setVoucherError(result.message || 'Mã giảm giá không còn thỏa điều kiện đơn hàng.');
       }
     }
-  }, [totalAmount, appliedVoucher]);
+  }, [adjustedSubtotal, appliedVoucher]);
+
+  const toggleRedeemItem = (cartItemId: string) => {
+    if (!matchedCustomer) {
+      setErrorMessage('Vui lòng nhập Số Điện Thoại để nhận diện hội viên trước khi đổi món!');
+      return;
+    }
+
+    const item = items.find((i) => i.id === cartItemId);
+    if (!item) return;
+
+    const itemPts = item.product.pointsRequiredToRedeem || Math.max(1, Math.round(item.unitPrice / pointToVnd));
+
+    if (redeemedCartItemIds.includes(cartItemId)) {
+      setRedeemedCartItemIds((prev) => prev.filter((id) => id !== cartItemId));
+    } else {
+      if (totalPointsRedeemedItems + itemPts > customerAvailablePoints) {
+        alert(`Bạn cần ít nhất ${itemPts} điểm để đổi món này. Điểm khả dụng hiện tại còn: ${customerAvailablePoints - totalPointsRedeemedItems} điểm.`);
+        return;
+      }
+      setRedeemedCartItemIds((prev) => [...prev, cartItemId]);
+    }
+  };
+
+  const handlePhoneInputChange = (input: string) => {
+    setCustomerPhone(input);
+    setErrorMessage(null);
+    const clean = input.trim().replace(/\D/g, '');
+    if (clean.length >= 9) {
+      const found = mockDb.findCustomerByPhone(clean);
+      if (found) {
+        setMatchedCustomer(found);
+        if (!customerName.trim()) {
+          setCustomerName(found.name);
+        }
+      } else {
+        setMatchedCustomer(null);
+      }
+    } else {
+      setMatchedCustomer(null);
+      setDiscountPointsUsed(0);
+      setRedeemedCartItemIds([]);
+    }
+  };
 
   if (!isCartOpen) return null;
 
@@ -100,7 +197,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
       return;
     }
 
-    const result = mockDb.validateAndCalculateVoucher(code, totalAmount);
+    const result = mockDb.validateAndCalculateVoucher(code, adjustedSubtotal);
     if (result.isValid) {
       setAppliedVoucher(result.voucher || null);
       setVoucherDiscount(result.discountAmount);
@@ -125,18 +222,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   let freeshipNotice: { needed: number; targetFee: number } | null = null;
   if (fulfillmentType === 'delivery' && deliveryConfig && deliveryConfig.tiers) {
     const higherTiers = deliveryConfig.tiers
-      .filter((t) => t.minOrder > totalAmount)
+      .filter((t) => t.minOrder > adjustedSubtotal)
       .sort((a, b) => a.minOrder - b.minOrder);
     if (higherTiers.length > 0) {
       const nextTier = higherTiers[0];
       freeshipNotice = {
-        needed: nextTier.minOrder - totalAmount,
+        needed: nextTier.minOrder - adjustedSubtotal,
         targetFee: nextTier.fee,
       };
     }
   }
 
-  const finalTotal = Math.max(0, totalAmount - voucherDiscount + shippingFee);
+  const finalTotal = Math.max(0, adjustedSubtotal - voucherDiscount - pointsCashDiscount + shippingFee);
 
   const handleCreateOrder = () => {
     setErrorMessage(null);
@@ -163,18 +260,66 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
 
     if (items.length === 0) return;
 
-    // Convert cart items to order items
-    const orderItems = items.map((item) => ({
-      productId: item.product.id,
-      productName: item.product.name,
-      unitPrice: item.unitPrice,
-      quantity: item.quantity,
-      totalPrice: item.unitPrice * item.quantity,
-      optionsSummary: item.optionsSummaryText ? item.optionsSummaryText.replace(/&bull;/g, ', ') : undefined,
-      itemNote: item.itemNote,
-    }));
+    // Convert cart items to order items with redemption support
+    const orderItems = items.flatMap((item) => {
+      const isRedeemed = redeemedCartItemIds.includes(item.id);
+      const itemPts = item.product.pointsRequiredToRedeem || Math.max(1, Math.round(item.unitPrice / pointToVnd));
 
-    // Gửi dữ liệu tạo đơn xuống MockDB (Backend mô phỏng sẽ tính toán lại phí ship và voucher an toàn)
+      if (isRedeemed) {
+        if (item.quantity === 1) {
+          return [
+            {
+              productId: item.product.id,
+              productName: item.product.name,
+              unitPrice: 0,
+              quantity: 1,
+              totalPrice: 0,
+              optionsSummary: item.optionsSummaryText ? item.optionsSummaryText.replace(/&bull;/g, ', ') : undefined,
+              itemNote: item.itemNote ? `${item.itemNote} (🎁 Đổi ${itemPts} điểm)` : `🎁 Đổi ${itemPts} điểm`,
+              isRedeemedWithPoints: true,
+              pointsCost: itemPts,
+            },
+          ];
+        } else {
+          return [
+            {
+              productId: item.product.id,
+              productName: `${item.product.name} (Đổi bằng điểm)`,
+              unitPrice: 0,
+              quantity: 1,
+              totalPrice: 0,
+              optionsSummary: item.optionsSummaryText ? item.optionsSummaryText.replace(/&bull;/g, ', ') : undefined,
+              itemNote: item.itemNote ? `${item.itemNote} (🎁 Đổi ${itemPts} điểm)` : `🎁 Đổi ${itemPts} điểm`,
+              isRedeemedWithPoints: true,
+              pointsCost: itemPts,
+            },
+            {
+              productId: item.product.id,
+              productName: item.product.name,
+              unitPrice: item.unitPrice,
+              quantity: item.quantity - 1,
+              totalPrice: item.unitPrice * (item.quantity - 1),
+              optionsSummary: item.optionsSummaryText ? item.optionsSummaryText.replace(/&bull;/g, ', ') : undefined,
+              itemNote: item.itemNote,
+            },
+          ];
+        }
+      }
+
+      return [
+        {
+          productId: item.product.id,
+          productName: item.product.name,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+          totalPrice: item.unitPrice * item.quantity,
+          optionsSummary: item.optionsSummaryText ? item.optionsSummaryText.replace(/&bull;/g, ', ') : undefined,
+          itemNote: item.itemNote,
+        },
+      ];
+    });
+
+    // Gửi dữ liệu tạo đơn xuống MockDB (Backend mô phỏng sẽ tính toán lại an toàn)
     const { order } = mockDb.createPendingOrder({
       customerName: customerName.trim() || `Khách ${cleanPhone.slice(-4)}`,
       customerPhone: cleanPhone,
@@ -185,6 +330,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
       deliveryTimeType,
       deliveryScheduledTime: deliveryTimeType === 'scheduled' ? deliveryScheduledTime : undefined,
       voucherCode: appliedVoucher ? appliedVoucher.code : promoCodeInput.trim() || undefined,
+      discountPointsUsed: validDiscountPoints,
+      totalPointsRedeemedItems,
     });
 
     // Confetti celebration
@@ -285,9 +432,48 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
                             </div>
                           )}
 
-                          <div className="text-xs font-bold text-amber-700 mt-1">
-                            {formatCurrency(item.unitPrice)}
-                          </div>
+                          {/* Price & Redeem Item With Points */}
+                          {redeemedCartItemIds.includes(item.id) ? (
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded-lg inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>
+                                  🎁 Đổi bằng {item.product.pointsRequiredToRedeem || Math.max(1, Math.round(item.unitPrice / pointToVnd))} điểm (0đ)
+                                </span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleRedeemItem(item.id)}
+                                className="text-[10px] text-stone-400 hover:text-rose-600 underline cursor-pointer"
+                              >
+                                Hủy đổi
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <div className="text-xs font-bold text-amber-700">
+                                {formatCurrency(item.unitPrice)}
+                              </div>
+                              {matchedCustomer && item.product.allowPointRedemption !== false && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleRedeemItem(item.id)}
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-lg inline-flex items-center gap-1 transition-all cursor-pointer ${
+                                    customerAvailablePoints - totalPointsRedeemedItems >=
+                                    (item.product.pointsRequiredToRedeem || Math.max(1, Math.round(item.unitPrice / pointToVnd)))
+                                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 shadow-2xs'
+                                      : 'bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed'
+                                  }`}
+                                  title={`Đổi 1 món này bằng ${item.product.pointsRequiredToRedeem || Math.max(1, Math.round(item.unitPrice / pointToVnd))} điểm`}
+                                >
+                                  <Gift className="w-3 h-3 text-amber-600" />
+                                  <span>
+                                    Đổi: {item.product.pointsRequiredToRedeem || Math.max(1, Math.round(item.unitPrice / pointToVnd))}đ
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Quantity Counter */}
@@ -550,43 +736,232 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
                   )}
                 </div>
 
-                {/* 3. THÔNG TIN KHÁCH HÀNG & GHI CHÚ */}
-                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 flex items-center justify-between">
-                    <span>Thông tin liên hệ</span>
-                    <span className="text-[10px] text-amber-800 font-semibold">Tự động tích điểm theo SĐT</span>
-                  </h4>
-
-                  <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">
-                      Số điện thoại của bạn <span className="text-rose-600 font-bold">*</span>:
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="VD: 0988111222 (Bắt buộc để lưu đơn & tích điểm)"
-                      value={customerPhone}
-                      onChange={(e) => {
-                        setCustomerPhone(e.target.value);
-                        setErrorMessage(null);
-                      }}
-                      className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 font-mono shadow-2xs"
-                    />
+                {/* 3. THÔNG TIN KHÁCH HÀNG & ĐIỂM THƯỞNG HỘI VIÊN */}
+                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Thông tin người nhận & Hội viên</span>
+                    </h4>
+                    <span className="text-[10px] text-amber-800 font-semibold bg-amber-100/70 px-2 py-0.5 rounded-full">
+                      Tích điểm tự động
+                    </span>
                   </div>
 
+                  {/* Số điện thoại */}
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">Họ tên / Nickname:</label>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      Số điện thoại của bạn <span className="text-rose-600 font-bold">*</span>:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        required
+                        placeholder="VD: 0988111222 (Nhập để kiểm tra điểm & tích điểm)"
+                        value={customerPhone}
+                        onChange={(e) => handlePhoneInputChange(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 font-mono shadow-2xs"
+                      />
+                      {matchedCustomer && (
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Hội viên</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* KHUNG THÔNG TIN HỘI VIÊN & ĐỔI ĐIỂM THƯỞNG */}
+                  {matchedCustomer ? (
+                    <div className="p-3.5 bg-gradient-to-br from-amber-50/90 to-orange-50/70 border border-amber-300/80 rounded-2xl space-y-3 shadow-2xs animate-fade-in">
+                      {/* Tiêu đề & Thông tin hội viên */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">
+                            {TIER_LABELS[matchedCustomer.tier]?.icon || '🌱'}
+                          </span>
+                          <div>
+                            <div className="font-bold text-xs text-stone-900 flex items-center gap-1.5">
+                              <span>{matchedCustomer.name}</span>
+                              <span
+                                className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border ${
+                                  TIER_LABELS[matchedCustomer.tier]?.color || 'bg-stone-100 text-stone-700'
+                                }`}
+                              >
+                                {TIER_LABELS[matchedCustomer.tier]?.label || 'Hội Viên'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-stone-500">
+                              Hạng {matchedCustomer.tier} &bull; Tích lũy x{TIER_CONFIG[matchedCustomer.tier].pointMultiplier}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-[10px] text-stone-500 block">Điểm khả dụng</span>
+                          <span className="font-mono font-black text-amber-900 text-sm">
+                            {matchedCustomer.availablePoints} điểm
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Khung Dùng Điểm Trừ Tiền Mặt */}
+                      <div className="space-y-1.5 pt-2 border-t border-amber-200/70">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-amber-950 flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Dùng điểm giảm tiền mặt:</span>
+                          </span>
+                          {pointsCashDiscount > 0 && (
+                            <span className="text-xs font-extrabold text-emerald-700 font-mono">
+                              - {formatCurrency(pointsCashDiscount)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <input
+                              type="number"
+                              min={0}
+                              max={maxAllowedCashDiscountPoints}
+                              step={5}
+                              value={discountPointsUsed || ''}
+                              onChange={(e) => {
+                                const val = Math.max(0, Math.min(maxAllowedCashDiscountPoints, Number(e.target.value)));
+                                setDiscountPointsUsed(val);
+                              }}
+                              className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-amber-600"
+                              placeholder="0"
+                            />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-stone-400 font-bold">
+                              điểm
+                            </span>
+                          </div>
+
+                          {/* Quick Preset Buttons */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {maxAllowedCashDiscountPoints >= 10 && (
+                              <button
+                                type="button"
+                                onClick={() => setDiscountPointsUsed(Math.min(maxAllowedCashDiscountPoints, 10))}
+                                className="px-2 py-1.5 rounded-lg bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900 cursor-pointer shadow-2xs"
+                              >
+                                10đ
+                              </button>
+                            )}
+                            {maxAllowedCashDiscountPoints >= 20 && (
+                              <button
+                                type="button"
+                                onClick={() => setDiscountPointsUsed(Math.min(maxAllowedCashDiscountPoints, 20))}
+                                className="px-2 py-1.5 rounded-lg bg-white hover:bg-amber-100 border border-amber-300 text-[10px] font-bold text-amber-900 cursor-pointer shadow-2xs"
+                              >
+                                20đ
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setDiscountPointsUsed(maxAllowedCashDiscountPoints)}
+                              className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold cursor-pointer shadow-2xs"
+                            >
+                              Tối đa
+                            </button>
+                            {discountPointsUsed > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setDiscountPointsUsed(0)}
+                                className="px-2 py-1.5 rounded-lg bg-white hover:bg-stone-100 border border-stone-200 text-[10px] text-stone-500 cursor-pointer"
+                              >
+                                Bỏ
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <span className="text-[10px] text-stone-500 block">
+                          Tỷ lệ: 1 điểm = {formatCurrency(pointToVnd)}. Còn lại {remainingPointsForCash} điểm có thể dùng.
+                        </span>
+                      </div>
+
+                      {/* Khung Đổi Món Bằng Điểm Trực Tiếp */}
+                      {items.some((i) => i.product.allowPointRedemption !== false) && (
+                        <div className="pt-2 border-t border-amber-200/70 space-y-1.5">
+                          <span className="text-[11px] font-bold text-amber-950 flex items-center gap-1">
+                            <Gift className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Đổi trực tiếp món trong giỏ lấy 0đ:</span>
+                          </span>
+
+                          <div className="space-y-1.5">
+                            {items
+                              .filter((i) => i.product.allowPointRedemption !== false)
+                              .map((it) => {
+                                const itPts = it.product.pointsRequiredToRedeem || Math.max(1, Math.round(it.unitPrice / pointToVnd));
+                                const isRed = redeemedCartItemIds.includes(it.id);
+                                return (
+                                  <div
+                                    key={it.id}
+                                    className="flex items-center justify-between p-2 rounded-xl bg-white border border-amber-200/70 text-xs"
+                                  >
+                                    <div className="min-w-0 pr-2">
+                                      <div className="font-bold text-stone-900 truncate text-[11px]">
+                                        {it.product.name}
+                                      </div>
+                                      <span className="text-[10px] text-stone-400">
+                                        Giá gốc: {formatCurrency(it.unitPrice)}
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleRedeemItem(it.id)}
+                                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer shrink-0 ${
+                                        isRed
+                                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                                          : customerAvailablePoints - totalPointsRedeemedItems >= itPts
+                                          ? 'bg-amber-500 text-stone-950 hover:bg-amber-400 font-extrabold shadow-2xs'
+                                          : 'bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed'
+                                      }`}
+                                    >
+                                      {isRed ? `✅ Đã đổi (${itPts}đ) • Hủy` : `🎁 Đổi 1 món (${itPts} điểm)`}
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    customerPhone.replace(/\D/g, '').length >= 9 && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs flex items-center gap-2.5">
+                        <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <strong className="block font-bold">Số điện thoại mới</strong>
+                          <span className="text-[11px] text-emerald-700">
+                            Tiệm sẽ tự động lưu thông tin và tích lũy điểm thưởng cho bạn ngay khi hoàn tất đơn!
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {/* Họ tên */}
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      Họ tên / Nickname:
+                    </label>
                     <input
                       type="text"
-                      placeholder="VD: Mai Linh"
+                      placeholder="VD: Mai Linh, Hoàng Nam..."
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600"
                     />
                   </div>
 
+                  {/* Ghi chú */}
                   <div>
-                    <label className="block text-xs font-medium text-stone-700 mb-1">
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
                       Ghi chú chung cho toàn bộ đơn:
                     </label>
                     <input
@@ -611,10 +986,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
                   <span className="font-semibold text-stone-900">{formatCurrency(totalAmount)}</span>
                 </div>
 
+                {itemRedemptionValue > 0 && (
+                  <div className="flex items-center justify-between text-amber-800 font-medium">
+                    <span>Đổi {totalPointsRedeemedItems} điểm lấy món (0đ):</span>
+                    <span>-{formatCurrency(itemRedemptionValue)}</span>
+                  </div>
+                )}
+
                 {voucherDiscount > 0 && (
                   <div className="flex items-center justify-between text-emerald-600 font-medium">
                     <span>Giảm giá Voucher:</span>
                     <span>-{formatCurrency(voucherDiscount)}</span>
+                  </div>
+                )}
+
+                {pointsCashDiscount > 0 && (
+                  <div className="flex items-center justify-between text-amber-800 font-medium">
+                    <span>Đổi {validDiscountPoints} điểm trừ tiền mặt:</span>
+                    <span>-{formatCurrency(pointsCashDiscount)}</span>
                   </div>
                 )}
 
@@ -630,6 +1019,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
                 <div className="flex items-center justify-between text-base font-bold text-stone-900 pt-2 border-t border-stone-200">
                   <span>Tổng tiền thanh toán:</span>
                   <span className="text-xl font-black text-amber-700">{formatCurrency(finalTotal)}</span>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-emerald-700 font-medium pt-1">
+                  <span>Điểm thưởng tích lũy sau đơn:</span>
+                  <strong>
+                    +{Math.floor(
+                      (finalTotal / (shopConfig.spendToPointRatio || 10000)) *
+                        (matchedCustomer ? TIER_CONFIG[matchedCustomer.tier].pointMultiplier : 1)
+                    )}{' '}
+                    điểm
+                  </strong>
                 </div>
               </div>
 

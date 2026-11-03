@@ -1078,10 +1078,17 @@ class MockDatabase {
   // --- PRODUCTS ---
   getProducts(): Product[] {
     const list = this.load<Product[]>(STORAGE_KEYS.PRODUCTS, SEED_PRODUCTS);
-    if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) {
-      this.save(STORAGE_KEYS.PRODUCTS, SEED_PRODUCTS);
-    }
-    return list;
+    const cfg = this.getShopConfig();
+    const ratio = cfg.pointToVndRatio || 1000;
+    return list.map((p) => {
+      const allowPointRedemption = p.allowPointRedemption !== undefined ? p.allowPointRedemption : (p.bonusPrice ? true : false);
+      const pointsRequiredToRedeem = p.pointsRequiredToRedeem || p.bonusPrice || Math.round(p.price / ratio);
+      return {
+        ...p,
+        allowPointRedemption,
+        pointsRequiredToRedeem,
+      };
+    });
   }
 
   getProductById(id: string): Product | undefined {
@@ -1382,6 +1389,8 @@ class MockDatabase {
     deliveryTimeType?: 'asap' | 'scheduled';
     deliveryScheduledTime?: string;
     voucherCode?: string;
+    discountPointsUsed?: number;
+    totalPointsRedeemedItems?: number;
   }): { order: Order; customer: Customer } {
     const {
       customerName,
@@ -1394,11 +1403,21 @@ class MockDatabase {
       deliveryTimeType = 'asap',
       deliveryScheduledTime,
       voucherCode,
+      discountPointsUsed = 0,
+      totalPointsRedeemedItems = 0,
     } = payload;
     const now = new Date().toISOString();
 
     const customer = this.createOrUpdateCustomer(customerName, customerPhone);
     const subTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+
+    const config = this.getShopConfig();
+    const pointToVndRatio = config.pointToVndRatio || 1000;
+    const spendToPointRatio = config.spendToPointRatio || 10000;
+
+    // Tính điểm thưởng trừ tiền
+    const validDiscountPoints = Math.min(discountPointsUsed, customer.availablePoints);
+    const discountAmount = validDiscountPoints * pointToVndRatio;
 
     // Tính phí vận chuyển đồng giá theo mốc đơn hàng
     const shippingFee = this.calculateShippingFee(subTotal, fulfillmentType);
@@ -1420,12 +1439,11 @@ class MockDatabase {
     }
 
     const tierInfo = TIER_CONFIG[customer.tier];
-    const earnedPoints = Math.floor((subTotal / SHOP_CONFIG.spendToPointRatio) * tierInfo.pointMultiplier);
+    const orderTotal = Math.max(0, subTotal - voucherDiscount - discountAmount + shippingFee);
+    const earnedPoints = Math.floor((orderTotal / spendToPointRatio) * tierInfo.pointMultiplier);
 
     const randomDigits = Math.floor(1000 + Math.random() * 9000);
     const orderCode = `#BS-${randomDigits}`;
-
-    const orderTotal = Math.max(0, subTotal - voucherDiscount + shippingFee);
 
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
@@ -1435,8 +1453,9 @@ class MockDatabase {
       customerName: customer.name,
       items,
       subTotal,
-      discountPointsUsed: 0,
-      discountAmount: 0,
+      discountPointsUsed: validDiscountPoints,
+      discountAmount,
+      totalPointsRedeemedItems,
       fulfillmentType,
       deliveryAddress: fulfillmentType === 'delivery' ? deliveryAddress : undefined,
       deliveryTimeType,
@@ -1478,6 +1497,7 @@ class MockDatabase {
     deliveryScheduledTime?: string;
     shippingFee?: number;
     voucherCode?: string;
+    totalPointsRedeemedItems?: number;
   }): { order: Order; customer: Customer } {
     const {
       customerName,
@@ -1485,6 +1505,7 @@ class MockDatabase {
       items,
       note,
       discountPointsUsed = 0,
+      totalPointsRedeemedItems = 0,
       paymentMethod = 'cash',
       status = 'completed',
       paymentStatus = 'paid',
@@ -1501,8 +1522,12 @@ class MockDatabase {
     const customer = this.createOrUpdateCustomer(customerName, customerPhone);
     const subTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
 
+    const config = this.getShopConfig();
+    const pointToVndRatio = config.pointToVndRatio || 1000;
+    const spendToPointRatio = config.spendToPointRatio || 10000;
+
     const validDiscountPoints = Math.min(discountPointsUsed, customer.availablePoints);
-    const discountAmount = validDiscountPoints * SHOP_CONFIG.pointToVndRatio;
+    const discountAmount = validDiscountPoints * pointToVndRatio;
 
     // Tính toán Voucher giảm giá nếu có
     let voucherDiscount = 0;
@@ -1521,7 +1546,7 @@ class MockDatabase {
     const orderTotal = Math.max(0, subTotal - discountAmount - voucherDiscount + shippingFee);
 
     const tierInfo = TIER_CONFIG[customer.tier];
-    const earnedPoints = Math.floor((orderTotal / SHOP_CONFIG.spendToPointRatio) * tierInfo.pointMultiplier);
+    const earnedPoints = Math.floor((orderTotal / spendToPointRatio) * tierInfo.pointMultiplier);
 
     const randomDigits = Math.floor(1000 + Math.random() * 9000);
     const orderCode = `#POS-${randomDigits}`;
@@ -1536,6 +1561,7 @@ class MockDatabase {
       subTotal,
       discountPointsUsed: validDiscountPoints,
       discountAmount,
+      totalPointsRedeemedItems,
       fulfillmentType,
       deliveryAddress,
       deliveryTimeType,
@@ -1559,9 +1585,10 @@ class MockDatabase {
 
     // Nếu đơn hàng tạo ở trạng thái COMPLETED (Bán xong thu tiền ngay tại quầy):
     if (status === 'completed') {
+      const totalPointsDeducted = validDiscountPoints + totalPointsRedeemedItems;
       customer.totalSpent += newOrder.orderTotal;
       customer.tier = calculateTier(customer.totalSpent);
-      customer.redeemedPoints += validDiscountPoints;
+      customer.redeemedPoints += totalPointsDeducted;
       customer.earnedPoints += earnedPoints;
       customer.availablePoints = customer.earnedPoints - customer.redeemedPoints;
       customer.updatedAt = now;
@@ -1574,7 +1601,7 @@ class MockDatabase {
       // Ghi lịch sử giao dịch điểm
       const transactions = this.getTransactions();
 
-      if (validDiscountPoints > 0) {
+      if (totalPointsDeducted > 0) {
         transactions.unshift({
           id: `tx-${Date.now()}-redeem`,
           customerId: customer.id,
@@ -1582,9 +1609,9 @@ class MockDatabase {
           source: 'REDEEM',
           orderId: newOrder.id,
           orderCode: newOrder.orderCode,
-          points: -validDiscountPoints,
+          points: -totalPointsDeducted,
           balanceAfter: customer.availablePoints - earnedPoints,
-          note: `Đổi ${validDiscountPoints} điểm giảm ${discountAmount.toLocaleString('vi-VN')}đ tại POS đơn ${newOrder.orderCode}`,
+          note: `Đổi ${totalPointsDeducted} điểm (trừ ${discountAmount.toLocaleString('vi-VN')}đ + đổi món) tại POS đơn ${newOrder.orderCode}`,
           createdAt: now,
         });
       }
@@ -1667,15 +1694,19 @@ class MockDatabase {
     }
 
     // Cập nhật giảm giá điểm nếu có
+    const config = this.getShopConfig();
+    const pointToVndRatio = config.pointToVndRatio || 1000;
+    const spendToPointRatio = config.spendToPointRatio || 10000;
+
     if (payload.discountPointsUsed !== undefined && payload.discountPointsUsed !== order.discountPointsUsed) {
       const validPoints = Math.min(payload.discountPointsUsed, customer.availablePoints);
-      const discountAmount = validPoints * SHOP_CONFIG.pointToVndRatio;
+      const discountAmount = validPoints * pointToVndRatio;
       order.discountPointsUsed = validPoints;
       order.discountAmount = discountAmount;
-      order.orderTotal = Math.max(0, order.subTotal - discountAmount);
+      order.orderTotal = Math.max(0, order.subTotal - (order.voucherDiscount || 0) - discountAmount + (order.shippingFee || 0));
 
       const tierInfo = TIER_CONFIG[customer.tier];
-      order.earnedPoints = Math.floor((order.orderTotal / SHOP_CONFIG.spendToPointRatio) * tierInfo.pointMultiplier);
+      order.earnedPoints = Math.floor((order.orderTotal / spendToPointRatio) * tierInfo.pointMultiplier);
     }
 
     // Cập nhật trạng thái từng giai đoạn
@@ -1692,9 +1723,10 @@ class MockDatabase {
 
         // Chỉ khi đơn sang trạng thái COMPLETED thì mới chính thức cộng điểm & doanh thu cho khách!
         if (prevStatus !== 'completed') {
+          const totalPointsDeducted = (order.discountPointsUsed || 0) + (order.totalPointsRedeemedItems || 0);
           customer.totalSpent += order.orderTotal;
           customer.tier = calculateTier(customer.totalSpent);
-          customer.redeemedPoints += order.discountPointsUsed;
+          customer.redeemedPoints += totalPointsDeducted;
           customer.earnedPoints += order.earnedPoints;
           customer.availablePoints = customer.earnedPoints - customer.redeemedPoints;
           customer.updatedAt = now;
@@ -1707,7 +1739,7 @@ class MockDatabase {
           // Ghi lịch sử giao dịch điểm
           const transactions = this.getTransactions();
 
-          if (order.discountPointsUsed > 0) {
+          if (totalPointsDeducted > 0) {
             transactions.unshift({
               id: `tx-${Date.now()}-redeem`,
               customerId: customer.id,
@@ -1715,9 +1747,9 @@ class MockDatabase {
               source: 'REDEEM',
               orderId: order.id,
               orderCode: order.orderCode,
-              points: -order.discountPointsUsed,
+              points: -totalPointsDeducted,
               balanceAfter: customer.availablePoints - order.earnedPoints,
-              note: `Đổi ${order.discountPointsUsed} điểm giảm ${order.discountAmount.toLocaleString('vi-VN')}đ cho đơn ${order.orderCode}`,
+              note: `Đổi ${totalPointsDeducted} điểm (giảm ${order.discountAmount.toLocaleString('vi-VN')}đ + đổi món) cho đơn ${order.orderCode}`,
               createdAt: now,
             });
           }

@@ -29,6 +29,14 @@ export const ShopSettings: React.FC = () => {
   const [accountNumber, setAccountNumber] = useState(currentConfig.bank.accountNumber);
   const [accountHolder, setAccountHolder] = useState(currentConfig.bank.accountHolder);
 
+  // Loyalty Program Config
+  const [spendToPointRatio, setSpendToPointRatio] = useState<number>(
+    currentConfig.spendToPointRatio || 10000
+  );
+  const [pointToVndRatio, setPointToVndRatio] = useState<number>(
+    currentConfig.pointToVndRatio || 1000
+  );
+
   // Delivery Config
   const [deliveryEnabled, setDeliveryEnabled] = useState(
     currentConfig.delivery?.enabled !== undefined ? currentConfig.delivery.enabled : true
@@ -76,6 +84,8 @@ export const ShopSettings: React.FC = () => {
       hotline,
       zaloPhone,
       address,
+      spendToPointRatio: Number(spendToPointRatio) || 10000,
+      pointToVndRatio: Number(pointToVndRatio) || 1000,
       bank: {
         bankName,
         accountNumber,
@@ -361,36 +371,151 @@ export const ShopSettings: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 4: Chính sách tích điểm thành viên */}
+        {/* Card 4: Tùy Chỉnh Chương Trình Đổi Điểm Thưởng */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200 shadow-xs space-y-4">
-          <h3 className="font-serif font-bold text-stone-900 text-base flex items-center gap-2 border-b border-stone-100 pb-3">
-            <Award className="w-4 h-4 text-purple-600" />
-            <span>Chính Sách Tích Điểm & Phân Hạng Hội Viên</span>
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+            <h3 className="font-serif font-bold text-stone-900 text-base flex items-center gap-2">
+              <Award className="w-5 h-5 text-purple-600" />
+              <span>Tùy Chỉnh Chương Trình Điểm Thưởng (Loyalty Points)</span>
+            </h3>
+            <span className="text-[11px] text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full font-bold border border-purple-200">
+              🎁 Tích điểm theo SĐT & Đổi món 0đ
+            </span>
+          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200">
-              <span className="text-[10px] text-stone-400 block uppercase font-bold">Tỷ Lệ Tích Điểm</span>
-              <strong className="text-sm font-mono text-stone-900 block mt-0.5">10.000đ = 1 điểm</strong>
-              <span className="text-[10px] text-stone-500">Chi tiêu 10k nhận 1 điểm</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            {/* 1. Mức tiền để tích 1 điểm */}
+            <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-2.5">
+              <div>
+                <label className="font-bold text-stone-900 block mb-1">
+                  1. Mức tiền chi tiêu để tích 1 điểm:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1000}
+                    step={1000}
+                    value={spendToPointRatio}
+                    onChange={(e) => setSpendToPointRatio(Math.max(1000, Number(e.target.value)))}
+                    className="flex-1 px-3 py-2 bg-white border border-stone-300 rounded-xl font-mono font-bold text-stone-900 text-sm focus:outline-none focus:border-amber-600"
+                    required
+                  />
+                  <span className="font-bold text-stone-700 font-mono">VNĐ = 1 điểm</span>
+                </div>
+              </div>
+
+              {/* Quick presets */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                <span className="text-[10px] text-stone-400">Chọn nhanh:</span>
+                {[5000, 10000, 15000, 20000].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setSpendToPointRatio(val)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-colors cursor-pointer ${
+                      spendToPointRatio === val
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    {formatCurrency(val)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-stone-500">
+                Mỗi khi khách mua đạt mốc tiền này sẽ được tặng 1 điểm thưởng vào thẻ VIP.
+              </p>
             </div>
 
+            {/* 2. Số tiền giảm của 1 điểm khi tiêu */}
+            <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-2.5">
+              <div>
+                <label className="font-bold text-stone-900 block mb-1">
+                  2. Số tiền giảm của 1 điểm khi đổi:
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-stone-700 font-mono">1 điểm =</span>
+                  <input
+                    type="number"
+                    min={100}
+                    step={100}
+                    value={pointToVndRatio}
+                    onChange={(e) => setPointToVndRatio(Math.max(100, Number(e.target.value)))}
+                    className="flex-1 px-3 py-2 bg-white border border-stone-300 rounded-xl font-mono font-bold text-amber-800 text-sm focus:outline-none focus:border-amber-600"
+                    required
+                  />
+                  <span className="font-bold text-amber-800 font-mono">VNĐ giảm trừ</span>
+                </div>
+              </div>
+
+              {/* Quick presets */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                <span className="text-[10px] text-stone-400">Chọn nhanh:</span>
+                {[500, 1000, 1500, 2000].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setPointToVndRatio(val)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-colors cursor-pointer ${
+                      pointToVndRatio === val
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    {formatCurrency(val)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-stone-500">
+                Khi thanh toán hoặc lên đơn, khách có thể trừ điểm để giảm trực tiếp số tiền này.
+              </p>
+            </div>
+          </div>
+
+          {/* Mô phỏng trực quan công thức (Live Simulation Calculator) */}
+          <div className="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl space-y-1.5 text-xs text-stone-800">
+            <div className="font-bold text-amber-900 flex items-center justify-between">
+              <span>💡 Minh Họa Tỷ Lệ Đổi Điểm Thực Tế:</span>
+              <span className="font-mono text-[11px] bg-amber-200/80 text-amber-950 px-2 py-0.5 rounded-full font-bold">
+                Tỷ lệ hoàn tiền: {((1 / (spendToPointRatio || 10000)) * (pointToVndRatio || 1000) * 100).toFixed(1)}%
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-stone-700">
+              <div>
+                • Khách mua đơn <strong>100.000đ</strong> ➔ Tích lũy được{' '}
+                <strong className="text-amber-800 font-mono">+{Math.floor(100000 / (spendToPointRatio || 10000))} điểm</strong>.
+              </div>
+              <div>
+                • Khi khách đổi <strong>10 điểm</strong> ➔ Được trừ thẳng{' '}
+                <strong className="text-emerald-800 font-mono">-{formatCurrency(10 * (pointToVndRatio || 1000))}</strong> vào đơn.
+              </div>
+            </div>
+          </div>
+
+          {/* Phân hạng hội viên */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
             <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200">
-              <span className="text-[10px] text-stone-400 block uppercase font-bold">Tỷ Lệ Đổi Tiền</span>
-              <strong className="text-sm font-mono text-amber-800 block mt-0.5">1 điểm = 1.000đ</strong>
-              <span className="text-[10px] text-stone-500">Trừ trực tiếp vào hóa đơn</span>
+              <span className="text-[10px] text-stone-400 block uppercase font-bold">Thành Viên Mới</span>
+              <strong className="text-sm font-mono text-stone-900 block mt-0.5">Tích x1.0</strong>
+              <span className="text-[10px] text-stone-500">Chi tiêu dưới 300k</span>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+              <span className="text-[10px] text-slate-600 block uppercase font-bold">Hội Viên Bạc</span>
+              <strong className="text-sm font-mono text-slate-800 block mt-0.5">Tích x1.15</strong>
+              <span className="text-[10px] text-slate-500">Chi tiêu từ 300k</span>
             </div>
 
             <div className="p-3 bg-yellow-50 rounded-2xl border border-yellow-200">
               <span className="text-[10px] text-yellow-800 block uppercase font-bold">Hội Viên Vàng</span>
-              <strong className="text-sm font-mono text-yellow-900 block mt-0.5">Tích x1.3 lần</strong>
-              <span className="text-[10px] text-yellow-700">Chi tiêu từ 1.200.000đ</span>
+              <strong className="text-sm font-mono text-yellow-900 block mt-0.5">Tích x1.3</strong>
+              <span className="text-[10px] text-yellow-700">Chi tiêu từ 1.200k</span>
             </div>
 
             <div className="p-3 bg-purple-50 rounded-2xl border border-purple-200">
               <span className="text-[10px] text-purple-800 block uppercase font-bold">VIP Kim Cương</span>
-              <strong className="text-sm font-mono text-purple-900 block mt-0.5">Tích x1.5 lần</strong>
-              <span className="text-[10px] text-purple-700">Chi tiêu từ 3.000.000đ</span>
+              <strong className="text-sm font-mono text-purple-900 block mt-0.5">Tích x1.5</strong>
+              <span className="text-[10px] text-purple-700">Chi tiêu từ 3.000k</span>
             </div>
           </div>
         </div>

@@ -66,6 +66,8 @@ export interface Product {
   price: number;
   fakePrice?: number;
   bonusPrice?: number;
+  allowPointRedemption?: boolean; // Cho phép đổi điểm lấy món
+  pointsRequiredToRedeem?: number; // Số điểm cần để đổi lấy món này
   imageUrl: string;
   isActive: boolean;
   unit: string;
@@ -85,6 +87,8 @@ export interface OrderItem {
   totalPrice: number;
   optionsSummary?: string;
   itemNote?: string;
+  isRedeemedWithPoints?: boolean; // Món này được đổi bằng điểm thưởng (giá = 0đ)
+  pointsCost?: number; // Số điểm dùng để đổi món này
 }
 
 // 4. Trạng thái đơn hàng & Thanh toán
@@ -110,6 +114,7 @@ export interface Order {
   subTotal: number;
   discountPointsUsed: number;
   discountAmount: number;
+  totalPointsRedeemedItems?: number; // Tổng số điểm đã dùng để đổi các sản phẩm thành 0đ
   
   // Giao hàng & Phí ship
   fulfillmentType: 'delivery' | 'pickup';

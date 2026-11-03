@@ -20,6 +20,7 @@ import {
   Check,
   PackageX,
   Printer,
+  Gift,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { mockDb, SHOP_CONFIG, TIER_CONFIG } from '../../services/mockDb';
@@ -237,23 +238,86 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
     }
   };
 
+  // Dynamic Shop Config & Point Rates
+  const shopConfig = mockDb.getShopConfig();
+  const pointToVnd = shopConfig.pointToVndRatio || 1000;
+  const spendToPoint = shopConfig.spendToPointRatio || 10000;
+
   // Tính toán tiền & Điểm
   const subTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   }, [cartItems]);
 
-  const maxRedeemablePoints = matchedCustomer ? matchedCustomer.availablePoints : 0;
+  // Tổng điểm đã dùng để đổi món trực tiếp trong giỏ
+  const totalPointsRedeemedItems = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + (item.isRedeemedWithPoints ? (item.pointsCost || 0) : 0), 0);
+  }, [cartItems]);
+
+  const maxRedeemablePoints = matchedCustomer
+    ? Math.max(0, matchedCustomer.availablePoints - totalPointsRedeemedItems)
+    : 0;
   const validDiscountPoints = Math.min(discountPointsUsed, maxRedeemablePoints);
-  const discountAmount = validDiscountPoints * SHOP_CONFIG.pointToVndRatio;
+  const discountAmount = validDiscountPoints * pointToVnd;
   const orderTotal = Math.max(0, subTotal - discountAmount);
 
   // Điểm thưởng dự kiến cộng cho đơn
   const customerTier = matchedCustomer ? matchedCustomer.tier : 'MEMBER';
   const tierInfo = TIER_CONFIG[customerTier];
-  const expectedPoints = Math.floor((orderTotal / SHOP_CONFIG.spendToPointRatio) * tierInfo.pointMultiplier);
+  const expectedPoints = Math.floor((orderTotal / spendToPoint) * tierInfo.pointMultiplier);
 
   // Tiền thối lại cho khách nếu thanh toán tiền mặt
   const changeMoney = typeof cashGiven === 'number' && cashGiven >= orderTotal ? cashGiven - orderTotal : 0;
+
+  // Toggle đổi món bằng điểm trực tiếp trong POS
+  const handleToggleRedeemPosItem = (index: number) => {
+    if (!matchedCustomer) {
+      setErrorMsg('Vui lòng nhập SĐT khách hàng trước khi đổi món bằng điểm.');
+      return;
+    }
+    const targetItem = cartItems[index];
+    const prod = products.find((p) => p.id === targetItem.productId);
+    const itemPts =
+      (prod?.pointsRequiredToRedeem || Math.max(1, Math.round(targetItem.unitPrice / pointToVnd))) *
+      targetItem.quantity;
+
+    if (targetItem.isRedeemedWithPoints) {
+      // Hủy đổi: khôi phục giá ban đầu
+      setCartItems((prev) => {
+        const next = [...prev];
+        next[index] = {
+          ...targetItem,
+          isRedeemedWithPoints: false,
+          pointsCost: undefined,
+          totalPrice: targetItem.unitPrice * targetItem.quantity,
+        };
+        return next;
+      });
+    } else {
+      // Đổi bằng điểm: kiểm tra đủ điểm không
+      const curRedeemedPts = cartItems.reduce(
+        (sum, it, idx) => (idx === index ? sum : sum + (it.isRedeemedWithPoints ? (it.pointsCost || 0) : 0)),
+        0
+      );
+      if (curRedeemedPts + itemPts > matchedCustomer.availablePoints) {
+        alert(
+          `Khách hàng không đủ điểm để đổi món này (Cần ${itemPts} điểm, hiện còn ${
+            matchedCustomer.availablePoints - curRedeemedPts
+          } điểm).`
+        );
+        return;
+      }
+      setCartItems((prev) => {
+        const next = [...prev];
+        next[index] = {
+          ...targetItem,
+          isRedeemedWithPoints: true,
+          pointsCost: itemPts,
+          totalPrice: 0,
+        };
+        return next;
+      });
+    }
+  };
 
   // Thực hiện tạo đơn hàng
   const handleProcessOrder = (isDelivery: boolean = false) => {
@@ -285,6 +349,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
         items: cartItems,
         note: orderNote.trim() || undefined,
         discountPointsUsed: validDiscountPoints,
+        totalPointsRedeemedItems,
         paymentMethod,
         status,
         paymentStatus,
@@ -599,8 +664,38 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
                       </div>
                     )}
 
-                    <div className="font-mono text-xs text-stone-500 mt-0.5">
-                      {formatCurrency(item.unitPrice)} / món
+                    {/* Price & Redeem Button */}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      {item.isRedeemedWithPoints ? (
+                        <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-lg">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>🎁 Đã đổi {item.pointsCost} điểm (0đ)</span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleRedeemPosItem(index)}
+                            className="underline text-stone-500 hover:text-rose-600 ml-1 cursor-pointer"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="font-mono text-xs text-stone-500">
+                            {formatCurrency(item.unitPrice)} / món
+                          </div>
+                          {matchedCustomer && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRedeemPosItem(index)}
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors cursor-pointer inline-flex items-center gap-1"
+                              title="Dùng điểm hội viên đổi món này"
+                            >
+                              <Gift className="w-2.5 h-2.5 text-amber-600" />
+                              <span>Đổi điểm</span>
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -651,6 +746,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
                 <span className="font-bold text-amber-900">Đổi điểm trừ tiền đơn này?</span>
                 <span className="text-stone-500">
                   Có sẵn: <strong>{matchedCustomer.availablePoints} điểm</strong>
+                  {totalPointsRedeemedItems > 0 && ` (Đã đổi món: ${totalPointsRedeemedItems}đ)`}
                 </span>
               </div>
 
@@ -658,12 +754,12 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
                 <input
                   type="number"
                   min={0}
-                  max={matchedCustomer.availablePoints}
+                  max={maxRedeemablePoints}
                   step={5}
                   value={discountPointsUsed}
                   onChange={(e) =>
                     setDiscountPointsUsed(
-                      Math.min(matchedCustomer.availablePoints, Math.max(0, Number(e.target.value)))
+                      Math.min(maxRedeemablePoints, Math.max(0, Number(e.target.value)))
                     )
                   }
                   className="w-24 px-2.5 py-1 bg-white border border-stone-300 rounded-xl text-xs font-mono font-bold text-stone-900"
@@ -673,7 +769,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setDiscountPointsUsed(matchedCustomer.availablePoints)}
+                  onClick={() => setDiscountPointsUsed(maxRedeemablePoints)}
                   className="px-2 py-1 rounded-lg bg-white border border-stone-300 text-[10px] font-bold text-stone-700 hover:bg-stone-100 cursor-pointer ml-auto"
                 >
                   Dùng hết
@@ -688,6 +784,13 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
               <span>Tạm tính tiền món:</span>
               <span className="font-bold text-stone-900 font-mono">{formatCurrency(subTotal)}</span>
             </div>
+
+            {totalPointsRedeemedItems > 0 && (
+              <div className="flex items-center justify-between text-amber-800 font-medium">
+                <span>Điểm đổi món trực tiếp (0đ):</span>
+                <span>-{totalPointsRedeemedItems} điểm</span>
+              </div>
+            )}
 
             {discountAmount > 0 && (
               <div className="flex items-center justify-between text-rose-600 font-medium">
