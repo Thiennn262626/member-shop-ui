@@ -19,12 +19,14 @@ import {
   Copy,
   Check,
   PackageX,
+  Printer,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { mockDb, SHOP_CONFIG, TIER_CONFIG } from '../../services/mockDb';
-import type { Customer, OrderItem, Product, SelectedOptionChoice } from '../../types';
+import type { Customer, Order, OrderItem, Product, SelectedOptionChoice } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { ItemCustomizationModal } from '../landing/ItemCustomizationModal';
+import { PrintBillModal } from './PrintBillModal';
 
 interface PosOrderCreatorProps {
   onOrderCreated: (orderId: string) => void;
@@ -83,6 +85,8 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
     orderTotal: number;
     earnedPoints: number;
   } | null>(null);
+  const [createdOrderObject, setCreatedOrderObject] = useState<Order | null>(null);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -284,6 +288,8 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
         paymentMethod,
         status,
         paymentStatus,
+        fulfillmentType: isDelivery ? 'delivery' : 'pickup',
+        deliveryAddress: isDelivery ? shipperNote.trim() : undefined,
         shipperInfo: isDelivery ? shipperNote.trim() || 'Tiệm đang chuẩn bị giao' : undefined,
       });
 
@@ -294,6 +300,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
         origin: { y: 0.6 },
       });
 
+      setCreatedOrderObject(order);
       setCreatedSuccessOrder({
         orderCode: order.orderCode,
         customerName: customer.name,
@@ -961,10 +968,24 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              {createdOrderObject && (
                 <button
                   type="button"
-                  onClick={() => setCreatedSuccessOrder(null)}
+                  onClick={() => setIsPrintModalOpen(true)}
+                  className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>In Hóa Đơn & Tem Dán Món</span>
+                </button>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatedSuccessOrder(null);
+                    setCreatedOrderObject(null);
+                  }}
                   className="flex-1 py-2.5 px-4 bg-stone-900 hover:bg-stone-800 text-amber-300 rounded-xl font-bold text-xs cursor-pointer transition-all"
                 >
                   Tiếp Tục Tạo Đơn Mới
@@ -974,6 +995,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
                   type="button"
                   onClick={() => {
                     setCreatedSuccessOrder(null);
+                    setCreatedOrderObject(null);
                     onSwitchToOrdersList();
                   }}
                   className="py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-semibold text-xs cursor-pointer transition-all"
@@ -984,6 +1006,14 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL IN HÓA ĐƠN & TEM */}
+      {isPrintModalOpen && createdOrderObject && (
+        <PrintBillModal
+          order={createdOrderObject}
+          onClose={() => setIsPrintModalOpen(false)}
+        />
       )}
     </div>
   );

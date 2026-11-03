@@ -26,11 +26,13 @@ import {
   Menu,
   X,
   Clock,
+  Printer,
+  Ticket,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { mockDb, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../services/mockDb';
 import type { AdminUserData, Customer, Order, OrderStatus } from '../types';
-import { formatCurrency, formatDate, formatPhone } from '../utils/format';
+import { formatCurrency, formatDate, formatDateTime, formatPhone } from '../utils/format';
 import { PosOrderCreator } from '../components/admin/PosOrderCreator';
 import { ProductManager } from '../components/admin/ProductManager';
 import { StockToggleManager } from '../components/admin/StockToggleManager';
@@ -38,13 +40,26 @@ import { AdminAnalytics } from '../components/admin/AdminAnalytics';
 import { CustomerManager } from '../components/admin/CustomerManager';
 import { StaffManager } from '../components/admin/StaffManager';
 import { ShopSettings } from '../components/admin/ShopSettings';
+import { ShiftManager } from '../components/admin/ShiftManager';
+import { VoucherManager } from '../components/admin/VoucherManager';
+import { PrintBillModal } from '../components/admin/PrintBillModal';
 
 interface AdminPageProps {
   onLogout: () => void;
   adminUser?: AdminUserData;
 }
 
-type AdminViewType = 'analytics' | 'pos' | 'orders' | 'stock' | 'products' | 'customers' | 'staff' | 'settings';
+type AdminViewType =
+  | 'analytics'
+  | 'pos'
+  | 'orders'
+  | 'shift'
+  | 'stock'
+  | 'vouchers'
+  | 'products'
+  | 'customers'
+  | 'staff'
+  | 'settings';
 
 export const AdminPage: React.FC<AdminPageProps> = ({
   onLogout,
@@ -63,10 +78,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   // Bảo vệ route/tab: nếu thu ngân cố tình truy cập tab của chủ tiệm thì redirect về POS
   useEffect(() => {
-    if (isCashier && ['analytics', 'staff', 'settings'].includes(adminView)) {
+    if (isCashier && ['analytics', 'staff', 'settings', 'vouchers'].includes(adminView)) {
       setAdminView('pos');
     }
   }, [isCashier, adminView]);
+
+  // In hóa đơn & tem dán state
+  const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
 
   // Quản lý đơn hàng state
   const [orderSearchCode, setOrderSearchCode] = useState('');
@@ -319,12 +337,28 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       ownerOnly: false,
     },
     {
+      id: 'shift' as AdminViewType,
+      label: 'Giao Ca & Chốt Két',
+      icon: Clock,
+      badge: 'Két Tiền',
+      badgeColor: 'bg-emerald-100 text-emerald-900 border border-emerald-300',
+      ownerOnly: false,
+    },
+    {
       id: 'stock' as AdminViewType,
       label: 'Báo Hết Món & Topping',
       icon: PackageX,
       badge: 'Bật/Tắt',
       badgeColor: 'bg-rose-100 text-rose-900 border border-rose-200',
       ownerOnly: false,
+    },
+    {
+      id: 'vouchers' as AdminViewType,
+      label: 'Mã Giảm Giá (Voucher)',
+      icon: Ticket,
+      badge: 'Chủ Tiệm',
+      badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300',
+      ownerOnly: true,
     },
     {
       id: 'products' as AdminViewType,
@@ -659,18 +693,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         </span>
                       </div>
 
-                      {/* Zalo Button */}
-                      <a
-                        href={`https://zalo.me/${selectedOrder.customerPhone}?text=${encodeURIComponent(
-                          `Chào ${selectedOrder.customerName}, tiệm bánh Bake & Sip phản hồi về đơn hàng ${selectedOrder.orderCode} của bạn:`
-                        )}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>Chat Zalo Khách</span>
-                      </a>
+                      {/* Action Buttons: In Hóa Đơn & Zalo */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOrderToPrint(selectedOrder)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                        >
+                          <Printer className="w-4 h-4" />
+                          <span>In Hóa Đơn & Tem</span>
+                        </button>
+
+                        <a
+                          href={`https://zalo.me/${selectedOrder.customerPhone}?text=${encodeURIComponent(
+                            `Chào ${selectedOrder.customerName}, tiệm bánh Bake & Sip phản hồi về đơn hàng ${selectedOrder.orderCode} của bạn:`
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Chat Zalo Khách</span>
+                        </a>
+                      </div>
                     </div>
 
                     {/* Thông tin khách hàng */}
@@ -740,6 +785,29 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         ))}
                       </div>
 
+                      {/* Thông tin giao hàng & hình thức nhận */}
+                      <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs space-y-1.5">
+                        <div className="flex items-center justify-between font-bold">
+                          <span className="text-stone-700">Hình thức giao nhận:</span>
+                          <span className="text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-lg">
+                            {selectedOrder.fulfillmentType === 'delivery' ? '🚚 Giao hàng tận nơi' : '🏪 Nhận tại quán'}
+                          </span>
+                        </div>
+                        {selectedOrder.fulfillmentType === 'delivery' && (
+                          <div className="space-y-1 pt-1 border-t border-stone-200/60">
+                            <div>
+                              <span className="text-stone-500">Địa chỉ giao:</span>{' '}
+                              <strong className="text-stone-900">{selectedOrder.deliveryAddress || 'Chưa cung cấp'}</strong>
+                            </div>
+                            {selectedOrder.deliveryScheduledTime && (
+                              <div className="text-amber-700 font-semibold">
+                                📅 Thời gian hẹn giao: {formatDateTime(selectedOrder.deliveryScheduledTime)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       {selectedOrder.note && (
                         <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-600">
                           <strong>Ghi chú đơn:</strong> {selectedOrder.note}
@@ -792,12 +860,28 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                         <span>Tạm tính tiền món:</span>
                         <span className="font-bold text-stone-900">{formatCurrency(selectedOrder.subTotal)}</span>
                       </div>
+
+                      {selectedOrder.voucherDiscount ? (
+                        <div className="flex items-center justify-between text-emerald-600 font-medium">
+                          <span>Giảm giá Voucher ({selectedOrder.voucherCode}):</span>
+                          <span>-{formatCurrency(selectedOrder.voucherDiscount)}</span>
+                        </div>
+                      ) : null}
+
                       {selectedOrder.discountAmount > 0 && (
-                        <div className="flex items-center justify-between text-rose-600">
+                        <div className="flex items-center justify-between text-rose-600 font-medium">
                           <span>Đã trừ điểm tích lũy ({selectedOrder.discountPointsUsed} điểm):</span>
                           <span>-{formatCurrency(selectedOrder.discountAmount)}</span>
                         </div>
                       )}
+
+                      {selectedOrder.fulfillmentType === 'delivery' && (
+                        <div className="flex items-center justify-between text-stone-700">
+                          <span>Phí giao hàng:</span>
+                          <span>{selectedOrder.shippingFee ? formatCurrency(selectedOrder.shippingFee) : '0đ (Freeship)'}</span>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between text-base font-extrabold text-stone-900 pt-1 border-t border-stone-100">
                         <span>Thực thu đơn hàng:</span>
                         <span className="text-xl text-amber-800 font-mono font-black">
@@ -1175,8 +1259,33 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             </main>
           )}
 
+          {/* TAB 3.2: GIAO CA & CHỐT KÉT THU NGÂN */}
+          {adminView === 'shift' && (
+            <div className="flex-1 p-3 sm:p-6 max-w-6xl mx-auto w-full">
+              <ShiftManager
+                currentStaff={{
+                  id: adminUser.id,
+                  name: adminUser.name,
+                  username: adminUser.username,
+                  pinCode: '0000',
+                  role: adminUser.role,
+                  shift: adminUser.shift || 'Ca Trực',
+                  isActive: true,
+                  createdAt: new Date().toISOString(),
+                }}
+              />
+            </div>
+          )}
+
           {/* TAB 3.5: QUẢN LÝ BÁO HẾT MÓN & TOPPING */}
           {adminView === 'stock' && <StockToggleManager />}
+
+          {/* TAB 3.8: QUẢN LÝ MÃ GIẢM GIÁ (VOUCHERS) */}
+          {adminView === 'vouchers' && !isCashier && (
+            <div className="flex-1 p-3 sm:p-6 max-w-6xl mx-auto w-full">
+              <VoucherManager />
+            </div>
+          )}
 
           {/* TAB 4: QUẢN LÝ THỰC ĐƠN & SẢN PHẨM */}
           {adminView === 'products' && <ProductManager userRole={adminUser.role} />}
@@ -1191,6 +1300,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           {adminView === 'settings' && !isCashier && <ShopSettings />}
         </div>
       </div>
+
+      {/* MODAL IN HÓA ĐƠN & TEM DÁN */}
+      {orderToPrint && (
+        <PrintBillModal
+          order={orderToPrint}
+          onClose={() => setOrderToPrint(null)}
+        />
+      )}
     </div>
   );
 };

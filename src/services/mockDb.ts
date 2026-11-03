@@ -1,4 +1,6 @@
 import type {
+  AdminRole,
+  CashShift,
   Customer,
   GlobalOptionItem,
   ItemOptionGroup,
@@ -12,7 +14,10 @@ import type {
   ShopConfig,
   StaffAccount,
   TierBenefit,
+  Voucher,
+  VoucherValidationResult,
 } from '../types';
+import { formatCurrency } from '../utils/format';
 
 export const SHOP_CONFIG: ShopConfig = {
   shopName: 'Bake & Sip',
@@ -28,6 +33,16 @@ export const SHOP_CONFIG: ShopConfig = {
     bankName: 'MBBank (Ngân Hàng Quân Đội)',
     accountNumber: '0901234567',
     accountHolder: 'TIEM BANH BAKE AND SIP',
+  },
+  delivery: {
+    enabled: true,
+    maxDistanceKm: 10,
+    areaNote: 'Chỉ nhận giao hàng trong bán kính 10km quanh khu vực Phú Nhuận & lân cận',
+    tiers: [
+      { id: 'tier-1', minOrder: 0, maxOrder: 99999, fee: 20000, label: 'Đơn dưới 100.000đ (Phí ship 20k)' },
+      { id: 'tier-2', minOrder: 100000, maxOrder: 199999, fee: 10000, label: 'Đơn từ 100.000đ - 199.999đ (Phí ship 10k)' },
+      { id: 'tier-3', minOrder: 200000, fee: 0, label: 'Đơn từ 200.000đ trở lên (Freeship 0đ)' },
+    ],
   },
 };
 
@@ -532,7 +547,12 @@ const SEED_ORDERS: Order[] = [
     subTotal: 115000,
     discountPointsUsed: 0,
     discountAmount: 0,
-    orderTotal: 115000,
+    fulfillmentType: 'delivery',
+    deliveryAddress: 'Phòng 402, Tòa nhà Landmark 81, Bình Thạnh, TP.HCM',
+    deliveryTimeType: 'asap',
+    shippingFee: 10000,
+    voucherDiscount: 0,
+    orderTotal: 125000,
     earnedPoints: 15,
     status: 'pending',
     paymentStatus: 'unpaid',
@@ -558,6 +578,10 @@ const SEED_ORDERS: Order[] = [
     subTotal: 49000,
     discountPointsUsed: 0,
     discountAmount: 0,
+    fulfillmentType: 'pickup',
+    deliveryTimeType: 'asap',
+    shippingFee: 0,
+    voucherDiscount: 0,
     orderTotal: 49000,
     earnedPoints: 7,
     status: 'completed',
@@ -586,7 +610,13 @@ const SEED_ORDERS: Order[] = [
     subTotal: 76000,
     discountPointsUsed: 15,
     discountAmount: 15000,
-    orderTotal: 61000,
+    fulfillmentType: 'delivery',
+    deliveryAddress: '124 Phan Xích Long, P.2, Phú Nhuận',
+    deliveryTimeType: 'scheduled',
+    deliveryScheduledTime: 'Hôm nay lúc 17:30',
+    shippingFee: 20000,
+    voucherDiscount: 0,
+    orderTotal: 81000,
     earnedPoints: 7,
     status: 'completed',
     paymentStatus: 'paid',
@@ -648,6 +678,92 @@ const SEED_STAFF_ACCOUNTS: StaffAccount[] = [
   },
 ];
 
+const SEED_VOUCHERS: Voucher[] = [
+  {
+    id: 'vouch-1',
+    code: 'BAKESIP10',
+    title: 'Giảm 10% Tối Đa 30k (Đơn từ 80k)',
+    discountType: 'percent',
+    discountValue: 10,
+    maxDiscountAmount: 30000,
+    minOrderValue: 80000,
+    startDate: '2026-01-01T00:00',
+    endDate: '2026-12-31T23:59',
+    usageLimit: 500,
+    usedCount: 42,
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'vouch-2',
+    code: 'BANHNGON20K',
+    title: 'Giảm Ngay 20.000đ (Đơn từ 120k)',
+    discountType: 'fixed',
+    discountValue: 20000,
+    minOrderValue: 120000,
+    startDate: '2026-01-01T00:00',
+    endDate: '2026-12-31T23:59',
+    usageLimit: 300,
+    usedCount: 19,
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'vouch-3',
+    code: 'FREESHIP',
+    title: 'Hỗ Trợ Phí Ship 20.000đ (Đơn từ 100k)',
+    discountType: 'fixed',
+    discountValue: 20000,
+    minOrderValue: 100000,
+    startDate: '2026-01-01T00:00',
+    endDate: '2026-12-31T23:59',
+    usageLimit: 200,
+    usedCount: 56,
+    isActive: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+];
+
+const SEED_SHIFTS: CashShift[] = [
+  {
+    id: 'shift-101',
+    shiftCode: '#CA-0324-01',
+    staffId: 'staff-2',
+    staffName: 'Trần Thu Ngân (Ca Sáng)',
+    staffRole: 'cashier',
+    shiftName: 'Ca Sáng (06:30 - 14:30)',
+    openedAt: '2026-03-24T06:30:00.000Z',
+    closedAt: '2026-03-24T14:30:00.000Z',
+    initialFloat: 500000,
+    cashSales: 1850000,
+    qrSales: 2420000,
+    totalSales: 4270000,
+    orderCount: 28,
+    expectedCash: 2350000,
+    actualCash: 2350000,
+    difference: 0,
+    notes: 'Bàn giao ca đầy đủ, tiền két khớp 100%. Đã nạp lại tiền thối 500k cho ca chiều.',
+    nextStaffName: 'Lê Hoàng Yến (Ca Chiều)',
+    status: 'closed',
+  },
+  {
+    id: 'shift-102',
+    shiftCode: '#CA-0325-01',
+    staffId: 'staff-2',
+    staffName: 'Trần Thu Ngân (Ca Sáng)',
+    staffRole: 'cashier',
+    shiftName: 'Ca Sáng (06:30 - 14:30)',
+    openedAt: new Date(Date.now() - 3.5 * 3600 * 1000).toISOString(),
+    initialFloat: 500000,
+    cashSales: 720000,
+    qrSales: 960000,
+    totalSales: 1680000,
+    orderCount: 11,
+    expectedCash: 1220000,
+    status: 'open',
+  },
+];
+
 const STORAGE_KEYS = {
   PRODUCTS: 'bake_sip_products_v5',
   CUSTOMERS: 'bake_sip_customers_v5',
@@ -655,6 +771,8 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'bake_sip_transactions_v5',
   STAFF: 'bake_sip_staff_v5',
   CONFIG: 'bake_sip_config_v5',
+  VOUCHERS: 'bake_sip_vouchers_v5',
+  SHIFTS: 'bake_sip_shifts_v5',
   REALTIME_PING: 'bake_sip_realtime_ping_v5',
 };
 
@@ -876,6 +994,10 @@ class MockDatabase {
         ...current.bank,
         ...(updates.bank || {}),
       },
+      delivery: {
+        ...(current.delivery || SHOP_CONFIG.delivery),
+        ...(updates.delivery || {}),
+      },
     };
     this.save(STORAGE_KEYS.CONFIG, updated);
     Object.assign(SHOP_CONFIG, updated);
@@ -893,6 +1015,21 @@ class MockDatabase {
           ? ''
           : 'Hôm nay tiệm tạm nghỉ nhận đơn online. Hẹn gặp lại quý khách!',
     });
+  }
+
+  // --- DELIVERY & SHIPPING FEE CALCULATION ---
+  calculateShippingFee(subTotal: number, fulfillmentType: 'delivery' | 'pickup' = 'delivery'): number {
+    if (fulfillmentType === 'pickup') return 0;
+    const config = this.getShopConfig();
+    const delivery = config.delivery || SHOP_CONFIG.delivery;
+    if (!delivery?.enabled) return 0;
+    const tiers = delivery.tiers || [];
+    for (const tier of tiers) {
+      if (subTotal >= tier.minOrder && (tier.maxOrder === undefined || subTotal <= tier.maxOrder)) {
+        return tier.fee;
+      }
+    }
+    return 20000;
   }
 
   private broadcastProductUpdate(): void {
@@ -981,18 +1118,55 @@ class MockDatabase {
     items: Order['items'];
     note?: string;
     promoCode?: string;
+    fulfillmentType?: 'delivery' | 'pickup';
+    deliveryAddress?: string;
+    deliveryTimeType?: 'asap' | 'scheduled';
+    deliveryScheduledTime?: string;
+    voucherCode?: string;
   }): { order: Order; customer: Customer } {
-    const { customerName, customerPhone, items, note, promoCode } = payload;
+    const {
+      customerName,
+      customerPhone,
+      items,
+      note,
+      promoCode,
+      fulfillmentType = 'delivery',
+      deliveryAddress,
+      deliveryTimeType = 'asap',
+      deliveryScheduledTime,
+      voucherCode,
+    } = payload;
     const now = new Date().toISOString();
 
     const customer = this.createOrUpdateCustomer(customerName, customerPhone);
     const subTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+
+    // Tính phí vận chuyển đồng giá theo mốc đơn hàng
+    const shippingFee = this.calculateShippingFee(subTotal, fulfillmentType);
+
+    // Tính toán Voucher giảm giá an toàn phía MockDB (Bảo mật: backend validation)
+    const activeCode = voucherCode || promoCode;
+    let voucherDiscount = 0;
+    let appliedVoucherCode: string | undefined = undefined;
+
+    if (activeCode) {
+      const vResult = this.validateAndCalculateVoucher(activeCode, subTotal);
+      if (vResult.isValid) {
+        voucherDiscount = vResult.discountAmount;
+        appliedVoucherCode = vResult.voucher?.code;
+        if (vResult.voucher) {
+          this.incrementVoucherUsage(vResult.voucher.id);
+        }
+      }
+    }
 
     const tierInfo = TIER_CONFIG[customer.tier];
     const earnedPoints = Math.floor((subTotal / SHOP_CONFIG.spendToPointRatio) * tierInfo.pointMultiplier);
 
     const randomDigits = Math.floor(1000 + Math.random() * 9000);
     const orderCode = `#BS-${randomDigits}`;
+
+    const orderTotal = Math.max(0, subTotal - voucherDiscount + shippingFee);
 
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
@@ -1004,10 +1178,17 @@ class MockDatabase {
       subTotal,
       discountPointsUsed: 0,
       discountAmount: 0,
-      orderTotal: subTotal,
+      fulfillmentType,
+      deliveryAddress: fulfillmentType === 'delivery' ? deliveryAddress : undefined,
+      deliveryTimeType,
+      deliveryScheduledTime,
+      shippingFee,
+      voucherCode: appliedVoucherCode,
+      voucherDiscount,
+      orderTotal,
       earnedPoints,
       note,
-      promoCode,
+      promoCode: appliedVoucherCode,
       status: 'pending', // Bước 1: Chờ tiệm duyệt
       paymentStatus: 'unpaid', // Khách chưa thanh toán
       createdAt: now,
@@ -1032,6 +1213,12 @@ class MockDatabase {
     status?: OrderStatus;
     paymentStatus?: PaymentStatus;
     shipperInfo?: string;
+    fulfillmentType?: 'delivery' | 'pickup';
+    deliveryAddress?: string;
+    deliveryTimeType?: 'asap' | 'scheduled';
+    deliveryScheduledTime?: string;
+    shippingFee?: number;
+    voucherCode?: string;
   }): { order: Order; customer: Customer } {
     const {
       customerName,
@@ -1043,6 +1230,12 @@ class MockDatabase {
       status = 'completed',
       paymentStatus = 'paid',
       shipperInfo,
+      fulfillmentType = 'pickup',
+      deliveryAddress,
+      deliveryTimeType = 'asap',
+      deliveryScheduledTime,
+      shippingFee = 0,
+      voucherCode,
     } = payload;
     const now = new Date().toISOString();
 
@@ -1051,7 +1244,22 @@ class MockDatabase {
 
     const validDiscountPoints = Math.min(discountPointsUsed, customer.availablePoints);
     const discountAmount = validDiscountPoints * SHOP_CONFIG.pointToVndRatio;
-    const orderTotal = Math.max(0, subTotal - discountAmount);
+
+    // Tính toán Voucher giảm giá nếu có
+    let voucherDiscount = 0;
+    let appliedVoucherCode: string | undefined = undefined;
+    if (voucherCode) {
+      const vResult = this.validateAndCalculateVoucher(voucherCode, subTotal);
+      if (vResult.isValid) {
+        voucherDiscount = vResult.discountAmount;
+        appliedVoucherCode = vResult.voucher?.code;
+        if (vResult.voucher) {
+          this.incrementVoucherUsage(vResult.voucher.id);
+        }
+      }
+    }
+
+    const orderTotal = Math.max(0, subTotal - discountAmount - voucherDiscount + shippingFee);
 
     const tierInfo = TIER_CONFIG[customer.tier];
     const earnedPoints = Math.floor((orderTotal / SHOP_CONFIG.spendToPointRatio) * tierInfo.pointMultiplier);
@@ -1069,6 +1277,13 @@ class MockDatabase {
       subTotal,
       discountPointsUsed: validDiscountPoints,
       discountAmount,
+      fulfillmentType,
+      deliveryAddress,
+      deliveryTimeType,
+      deliveryScheduledTime,
+      shippingFee,
+      voucherCode: appliedVoucherCode,
+      voucherDiscount,
       orderTotal,
       earnedPoints,
       note,
@@ -1131,6 +1346,11 @@ class MockDatabase {
       }
 
       this.save(STORAGE_KEYS.TRANSACTIONS, transactions);
+
+      // Tự động ghi nhận vào ca trực nếu thanh toán thành công
+      if (paymentStatus === 'paid') {
+        this.recordSaleInShift(orderTotal, paymentMethod);
+      }
     }
 
     const orders = this.getOrders();
@@ -1172,9 +1392,13 @@ class MockDatabase {
 
     // Cập nhật thanh toán
     if (payload.paymentStatus && payload.paymentStatus !== order.paymentStatus) {
+      const prevPayment = order.paymentStatus;
       order.paymentStatus = payload.paymentStatus;
       if (payload.paymentStatus === 'paid') {
         order.paidAt = now;
+        if (order.status === 'completed' && prevPayment !== 'paid') {
+          this.recordSaleInShift(order.orderTotal, order.paymentMethod || 'vietqr');
+        }
       }
     }
 
@@ -1255,6 +1479,10 @@ class MockDatabase {
           }
 
           this.save(STORAGE_KEYS.TRANSACTIONS, transactions);
+
+          if (order.paymentStatus === 'paid') {
+            this.recordSaleInShift(order.orderTotal, order.paymentMethod || 'vietqr');
+          }
         }
       } else if (payload.status === 'cancelled') {
         order.cancelledAt = now;
@@ -1404,6 +1632,253 @@ class MockDatabase {
       throw new Error('Tài khoản này hiện đang bị tạm khóa. Vui lòng liên hệ Chủ tiệm!');
     }
     return found;
+  }
+
+  // --- VOUCHERS (MÃ GIẢM GIÁ) ---
+  getVouchers(): Voucher[] {
+    const list = this.load<Voucher[]>(STORAGE_KEYS.VOUCHERS, SEED_VOUCHERS);
+    if (!localStorage.getItem(STORAGE_KEYS.VOUCHERS)) {
+      this.save(STORAGE_KEYS.VOUCHERS, SEED_VOUCHERS);
+    }
+    return list;
+  }
+
+  addVoucher(payload: Omit<Voucher, 'id' | 'usedCount' | 'createdAt'>): Voucher {
+    const vouchers = this.getVouchers();
+    const cleanCode = payload.code.trim().toUpperCase();
+    if (vouchers.some((v) => v.code.toUpperCase() === cleanCode)) {
+      throw new Error(`Mã voucher "${cleanCode}" đã tồn tại trên hệ thống.`);
+    }
+
+    const newVoucher: Voucher = {
+      ...payload,
+      id: `vouch-${Date.now()}`,
+      code: cleanCode,
+      usedCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    vouchers.unshift(newVoucher);
+    this.save(STORAGE_KEYS.VOUCHERS, vouchers);
+    window.dispatchEvent(new CustomEvent('bake_sip_voucher_updated'));
+    return newVoucher;
+  }
+
+  updateVoucher(id: string, updates: Partial<Voucher>): Voucher {
+    const vouchers = this.getVouchers();
+    const index = vouchers.findIndex((v) => v.id === id);
+    if (index === -1) {
+      throw new Error('Không tìm thấy mã voucher cần cập nhật');
+    }
+
+    if (updates.code) {
+      const cleanCode = updates.code.trim().toUpperCase();
+      const duplicate = vouchers.find((v) => v.id !== id && v.code.toUpperCase() === cleanCode);
+      if (duplicate) {
+        throw new Error(`Mã giảm giá "${cleanCode}" đã được sử dụng.`);
+      }
+      updates.code = cleanCode;
+    }
+
+    vouchers[index] = { ...vouchers[index], ...updates };
+    this.save(STORAGE_KEYS.VOUCHERS, vouchers);
+    window.dispatchEvent(new CustomEvent('bake_sip_voucher_updated'));
+    return vouchers[index];
+  }
+
+  toggleVoucherStatus(id: string): Voucher {
+    const vouchers = this.getVouchers();
+    const index = vouchers.findIndex((v) => v.id === id);
+    if (index === -1) throw new Error('Không tìm thấy voucher');
+    vouchers[index].isActive = !vouchers[index].isActive;
+    this.save(STORAGE_KEYS.VOUCHERS, vouchers);
+    window.dispatchEvent(new CustomEvent('bake_sip_voucher_updated'));
+    return vouchers[index];
+  }
+
+  deleteVoucher(id: string): boolean {
+    const vouchers = this.getVouchers();
+    const filtered = vouchers.filter((v) => v.id !== id);
+    this.save(STORAGE_KEYS.VOUCHERS, filtered);
+    window.dispatchEvent(new CustomEvent('bake_sip_voucher_updated'));
+    return true;
+  }
+
+  incrementVoucherUsage(id: string): void {
+    const vouchers = this.getVouchers();
+    const v = vouchers.find((item) => item.id === id);
+    if (v) {
+      v.usedCount = (v.usedCount || 0) + 1;
+      this.save(STORAGE_KEYS.VOUCHERS, vouchers);
+      window.dispatchEvent(new CustomEvent('bake_sip_voucher_updated'));
+    }
+  }
+
+  validateAndCalculateVoucher(code: string, subTotal: number): VoucherValidationResult {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) {
+      return { isValid: false, discountAmount: 0, message: 'Vui lòng nhập mã giảm giá', reason: 'Vui lòng nhập mã giảm giá' };
+    }
+
+    const vouchers = this.getVouchers();
+    const voucher = vouchers.find((v) => v.code.toUpperCase() === cleanCode);
+
+    if (!voucher) {
+      const msg = `Mã giảm giá "${cleanCode}" không tồn tại`;
+      return { isValid: false, discountAmount: 0, message: msg, reason: msg };
+    }
+
+    if (!voucher.isActive) {
+      const msg = `Mã "${voucher.code}" hiện đang tạm ngưng sử dụng`;
+      return { isValid: false, discountAmount: 0, message: msg, reason: msg };
+    }
+
+    const now = new Date();
+    if (voucher.startDate && now < new Date(voucher.startDate)) {
+      const msg = `Mã "${voucher.code}" chưa đến thời gian áp dụng`;
+      return { isValid: false, discountAmount: 0, message: msg, reason: msg };
+    }
+
+    if (voucher.endDate && now > new Date(voucher.endDate)) {
+      const msg = `Mã "${voucher.code}" đã hết hạn sử dụng`;
+      return { isValid: false, discountAmount: 0, message: msg, reason: msg };
+    }
+
+    if (voucher.usageLimit && voucher.usedCount >= voucher.usageLimit) {
+      const msg = `Mã "${voucher.code}" đã hết lượt sử dụng`;
+      return { isValid: false, discountAmount: 0, message: msg, reason: msg };
+    }
+
+    if (voucher.minOrderValue && subTotal < voucher.minOrderValue) {
+      const msg = `Đơn hàng tối thiểu ${formatCurrency(voucher.minOrderValue)} để áp dụng mã này`;
+      return { isValid: false, discountAmount: 0, message: msg, reason: msg };
+    }
+
+    // Tính toán số tiền giảm
+    let discountAmount = 0;
+    if (voucher.discountType === 'percent') {
+      discountAmount = Math.round((subTotal * voucher.discountValue) / 100);
+      if (voucher.maxDiscountAmount && discountAmount > voucher.maxDiscountAmount) {
+        discountAmount = voucher.maxDiscountAmount;
+      }
+    } else {
+      discountAmount = Math.min(voucher.discountValue, subTotal);
+    }
+
+    return {
+      isValid: true,
+      discountAmount,
+      message: `Áp dụng mã "${voucher.code}" thành công (-${formatCurrency(discountAmount)})`,
+      voucher,
+    };
+  }
+
+  // --- CASH SHIFTS (GIAO CA & CHỐT KÉT THU NGÂN) ---
+  getShifts(): CashShift[] {
+    const list = this.load<CashShift[]>(STORAGE_KEYS.SHIFTS, SEED_SHIFTS);
+    if (!localStorage.getItem(STORAGE_KEYS.SHIFTS)) {
+      this.save(STORAGE_KEYS.SHIFTS, SEED_SHIFTS);
+    }
+    return list;
+  }
+
+  getCurrentShift(): CashShift | null {
+    const shifts = this.getShifts();
+    return shifts.find((s) => s.status === 'open') || null;
+  }
+
+  openShift(payload: {
+    staffId: string;
+    staffName: string;
+    staffRole: AdminRole;
+    shiftName: string;
+    initialFloat: number;
+    notes?: string;
+  }): CashShift {
+    const shifts = this.getShifts();
+    const current = shifts.find((s) => s.status === 'open');
+    if (current) {
+      throw new Error(`Đang có ca làm việc "${current.shiftName}" chưa chốt két. Vui lòng kết thúc ca cũ trước.`);
+    }
+
+    const now = new Date();
+    const dateStr = `${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const randomSeq = String(shifts.length + 1).padStart(2, '0');
+    const shiftCode = `#CA-${dateStr}-${randomSeq}`;
+
+    const newShift: CashShift = {
+      id: `shift-${Date.now()}`,
+      shiftCode,
+      staffId: payload.staffId,
+      staffName: payload.staffName,
+      staffRole: payload.staffRole,
+      shiftName: payload.shiftName,
+      openedAt: now.toISOString(),
+      initialFloat: payload.initialFloat,
+      cashSales: 0,
+      qrSales: 0,
+      totalSales: 0,
+      orderCount: 0,
+      expectedCash: payload.initialFloat,
+      notes: payload.notes || '',
+      status: 'open',
+    };
+
+    shifts.unshift(newShift);
+    this.save(STORAGE_KEYS.SHIFTS, shifts);
+    window.dispatchEvent(new CustomEvent('bake_sip_shift_updated'));
+    return newShift;
+  }
+
+  recordSaleInShift(amount: number, paymentMethod: string = 'cash'): void {
+    const shifts = this.getShifts();
+    const current = shifts.find((s) => s.status === 'open');
+    if (!current) return;
+
+    if (paymentMethod === 'cash') {
+      current.cashSales += amount;
+      current.expectedCash += amount;
+    } else {
+      current.qrSales += amount;
+    }
+    current.totalSales += amount;
+    current.orderCount += 1;
+
+    this.save(STORAGE_KEYS.SHIFTS, shifts);
+    window.dispatchEvent(new CustomEvent('bake_sip_shift_updated'));
+  }
+
+  closeShift(
+    shiftId: string,
+    payload: {
+      actualCash: number;
+      notes?: string;
+      nextStaffName?: string;
+    }
+  ): CashShift {
+    const shifts = this.getShifts();
+    const index = shifts.findIndex((s) => s.id === shiftId);
+    if (index === -1) {
+      throw new Error('Không tìm thấy ca trực cần chốt két');
+    }
+
+    const shift = shifts[index];
+    if (shift.status === 'closed') {
+      throw new Error('Ca trực này đã được chốt két trước đó');
+    }
+
+    const now = new Date().toISOString();
+    shift.actualCash = payload.actualCash;
+    shift.difference = payload.actualCash - shift.expectedCash;
+    if (payload.notes !== undefined) shift.notes = payload.notes;
+    if (payload.nextStaffName !== undefined) shift.nextStaffName = payload.nextStaffName;
+    shift.closedAt = now;
+    shift.status = 'closed';
+
+    shifts[index] = shift;
+    this.save(STORAGE_KEYS.SHIFTS, shifts);
+    window.dispatchEvent(new CustomEvent('bake_sip_shift_updated'));
+    return shift;
   }
 }
 

@@ -110,6 +110,18 @@ export interface Order {
   subTotal: number;
   discountPointsUsed: number;
   discountAmount: number;
+  
+  // Giao hàng & Phí ship
+  fulfillmentType: 'delivery' | 'pickup';
+  deliveryAddress?: string;
+  deliveryTimeType: 'asap' | 'scheduled';
+  deliveryScheduledTime?: string; // Ngày & giờ hẹn giao/nhận
+  shippingFee: number;
+
+  // Khuyến mãi / Voucher
+  voucherCode?: string;
+  voucherDiscount: number;
+
   orderTotal: number;
   earnedPoints: number;
   note?: string;
@@ -146,11 +158,26 @@ export interface PointTransaction {
   createdAt: string;
 }
 
-// 7. Cấu hình Cửa hàng & Tài khoản nhận tiền
+// 7. Cấu hình Cửa hàng & Vận chuyển & Tài khoản nhận tiền
 export interface BankConfig {
   bankName: string; // MBBank, Vietcombank,...
   accountNumber: string;
   accountHolder: string;
+}
+
+export interface ShippingTier {
+  id: string;
+  minOrder: number; // Mốc giá trị đơn từ (VNĐ)
+  maxOrder?: number; // Mốc giá trị đơn đến (VNĐ, undefined = không giới hạn trên)
+  fee: number; // Mức phí ship tương ứng (0 = Freeship)
+  label: string; // Tên hiển thị (VD: "Đơn dưới 100k", "Đơn từ 200k (Freeship)")
+}
+
+export interface DeliveryConfig {
+  enabled: boolean;
+  maxDistanceKm: number; // Mặc định 10km quanh khu vực
+  areaNote: string; // Ghi chú phạm vi (VD: "Chỉ nhận giao hàng trong bán kính 10km quanh khu vực tiệm")
+  tiers: ShippingTier[];
 }
 
 export interface ShopConfig {
@@ -164,6 +191,62 @@ export interface ShopConfig {
   bank: BankConfig;
   isOpen: boolean; // Trạng thái nhận đơn hôm nay (Mở cửa / Tạm nghỉ bán)
   pauseReason?: string; // Lý do tạm nghỉ (nếu có)
+  delivery: DeliveryConfig; // Cấu hình giao hàng & phí ship đồng giá theo mốc
+}
+
+// 8. Hệ thống Mã Giảm Giá / Voucher Khuyến Mãi
+export interface Voucher {
+  id: string;
+  code: string; // Mã voucher (VD: "BAKESIP10", "BANHNGON20K")
+  title: string;
+  discountType: 'percent' | 'fixed'; // Giảm % hay Giảm tiền cố định
+  discountValue: number; // 10 (%) hoặc 20000 (VNĐ)
+  maxDiscountAmount?: number; // Giảm tối đa bao nhiêu (nếu là percent)
+  minOrderValue: number; // Đơn hàng tối thiểu để áp dụng
+  startDate: string; // Ngày giờ bắt đầu (YYYY-MM-DDTHH:mm)
+  endDate: string; // Ngày giờ kết thúc (YYYY-MM-DDTHH:mm)
+  usageLimit?: number; // Tổng lượt dùng tối đa
+  usedCount: number; // Đã dùng
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface VoucherValidationResult {
+  isValid: boolean;
+  discountAmount: number;
+  message: string;
+  reason?: string;
+  voucher?: Voucher;
+}
+
+// 9. Quản Lý Giao Ca & Chốt Két Thu Ngân (Shift Handover & Cash Drawer)
+export interface CashShift {
+  id: string;
+  shiftCode: string; // Mã ca (VD: #CA-2603-01)
+  staffId: string;
+  staffName: string;
+  staffRole: AdminRole;
+  shiftName: string; // Ca Sáng, Ca Chiều,...
+  
+  // Thời gian & Quỹ đầu ca
+  openedAt: string;
+  initialFloat: number; // Tiền mặt đầu ca (tiền thối / tiền lẻ)
+  
+  // Số liệu trong ca (tính tự động từ các đơn hoàn tất)
+  cashSales: number; // Tổng tiền mặt thu
+  qrSales: number; // Tổng chuyển khoản VietQR
+  totalSales: number; // Tổng doanh số ca
+  orderCount: number; // Tổng số đơn
+  
+  // Kết ca & Bàn giao
+  closedAt?: string;
+  expectedCash: number; // Tiền mặt dự kiến có trong két = initialFloat + cashSales
+  actualCash?: number; // Tiền mặt thực tế đếm được trong két
+  difference?: number; // actualCash - expectedCash (0: Khớp, >0: Thừa, <0: Thiếu)
+  
+  notes?: string;
+  nextStaffName?: string; // Nhân viên nhận bàn giao ca
+  status: 'open' | 'closed';
 }
 
 export interface GlobalOptionItem {

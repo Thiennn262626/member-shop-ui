@@ -21,6 +21,8 @@ export function formatDate(isoString: string): string {
   }
 }
 
+export const formatDateTime = formatDate;
+
 export function formatPhone(phone: string): string {
   const clean = phone.replace(/\D/g, '');
   if (clean.length === 10) {
