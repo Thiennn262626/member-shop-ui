@@ -3,6 +3,7 @@ import { CartProvider } from './context/CartContext';
 import { LandingPage } from './pages/LandingPage';
 import { AdminPage } from './pages/AdminPage';
 import { AdminLoginModal } from './components/admin/AdminLoginModal';
+import { DemoBanner } from './components/common/DemoBanner';
 import type { AdminUserData } from './types';
 
 export function App() {
@@ -59,6 +60,7 @@ export function App() {
           adminUser={adminUser || undefined}
         />
       )}
+      <DemoBanner />
     </CartProvider>
   );
 }

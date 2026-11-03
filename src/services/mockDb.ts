@@ -2445,6 +2445,15 @@ class MockDatabase {
       actualNotes: notes || `Đã chốt công cuối ngày: ${actualHours} giờ`,
     });
   }
+
+  // Khôi phục lại toàn bộ dữ liệu mẫu ban đầu (dùng cho chào hàng / demo)
+  resetToSeedData(): void {
+    Object.values(STORAGE_KEYS).forEach((key) => {
+      localStorage.removeItem(key);
+    });
+    sessionStorage.removeItem('bake_sip_admin_user');
+    window.location.reload();
+  }
 }
 
 export const mockDb = new MockDatabase();
