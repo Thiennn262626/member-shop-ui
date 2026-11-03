@@ -1,6 +1,7 @@
 # 📑 TÀI LIỆU TOÀN DIỆN HỆ THỐNG VẬN HÀNH BÁN HÀNG & F&B POS - BAKE & SIP
 > **Hồ sơ Thuyết minh Năng lực Sản phẩm & Hướng dẫn Vận hành Nghiệp vụ Thực tế**  
-> *Dành cho Quý Nhà Đầu Tư, Đối Tác Chiến Lược & Ban Quản Lý Dự Án*
+> *Dành cho Quý Nhà Đầu Tư, Đối Tác Chiến Lược & Ban Quản Lý Dự Án*  
+> 🌐 **Link Trải Nghiệm Thực Tế Trực Tuyến**: [https://member-shop-ui.vercel.app](https://member-shop-ui.vercel.app)
 
 ---
 

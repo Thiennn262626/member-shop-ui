@@ -2,6 +2,9 @@
 
 > **Nền tảng thương mại F&B 2-trong-1 (Dual-Platform)**: Kết hợp kênh đặt hàng trực tiếp D2C (Direct-to-Consumer) cho khách hàng và Hệ thống POS & Quản trị vận hành thông minh cho cửa hàng đồ uống & bánh ngọt.
 
+🌐 **ĐƯỜNG DẪN TRỰC TUYẾN (LIVE DEMO ON VERCEL)**:  
+👉 **[https://member-shop-ui.vercel.app](https://member-shop-ui.vercel.app)** *(Mở trải nghiệm ngay trên điện thoại hoặc máy tính)*
+
 ---
 
 ## 🌟 TÀI LIỆU DÀNH CHO NHÀ ĐẦU TƯ & HƯỚNG DẪN VẬN HÀNH
