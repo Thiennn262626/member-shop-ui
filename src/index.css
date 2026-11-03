@@ -42,3 +42,44 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Attention & Modal Animations */
+@keyframes soft-wiggle {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  15% {
+    transform: rotate(-1.5deg) scale(1.02);
+  }
+  30% {
+    transform: rotate(1.5deg) scale(1.02);
+  }
+  45% {
+    transform: rotate(-1deg) scale(1.01);
+  }
+  60% {
+    transform: rotate(1deg) scale(1.01);
+  }
+  75% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.animate-soft-wiggle {
+  animation: soft-wiggle 3.5s ease-in-out infinite;
+}
+
+@keyframes gentle-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-gentle-modal {
+  animation: gentle-modal-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

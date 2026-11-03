@@ -1,5 +1,19 @@
-import React from 'react';
-import { ArrowDown, CreditCard, Sparkles, Flame, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  ArrowDown,
+  CreditCard,
+  Sparkles,
+  Flame,
+  CheckCircle2,
+  ChevronRight,
+  X,
+  ShoppingBag,
+  Ticket,
+  QrCode,
+  MessageCircle,
+  Coffee,
+  Check,
+} from 'lucide-react';
 import { SHOP_CONFIG } from '../../services/mockDb';
 
 interface HeroProps {
@@ -9,6 +23,8 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onOpenWheel }) => {
+  const [isOrderGuideOpen, setIsOrderGuideOpen] = useState(false);
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-amber-50/70 via-stone-50 to-[#fdfbf7] py-10 sm:py-16 border-b border-stone-200">
       {/* Decorative Warm Ambient Glows */}
@@ -104,17 +120,35 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
 
               {/* 3 Steps */}
               <div className="space-y-3.5">
-                <div className="flex items-start gap-3 p-3 rounded-2xl bg-amber-50/70 border border-amber-100">
-                  <div className="w-7 h-7 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                {/* Step 1 with Attention-Grabbing Wiggle Animation & Clickable Popup Guide */}
+                <button
+                  type="button"
+                  onClick={() => setIsOrderGuideOpen(true)}
+                  className="w-full text-left flex items-start gap-3 p-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/90 border-2 border-amber-400 hover:border-amber-500 shadow-md shadow-amber-200/50 cursor-pointer transition-all active:scale-[0.98] group relative overflow-hidden animate-soft-wiggle focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  title="Nhấp để xem hướng dẫn chi tiết quy trình mua hàng"
+                >
+                  {/* Glowing Corner Accent */}
+                  <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-amber-300/40 to-transparent pointer-events-none rounded-tr-2xl" />
+
+                  <div className="w-7 h-7 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 shadow-xs group-hover:scale-110 transition-transform">
                     1
                   </div>
-                  <div>
-                    <div className="font-bold text-stone-900 text-xs">Chọn món & Gửi Zalo</div>
-                    <p className="text-[11px] text-stone-600 mt-0.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <div className="font-bold text-stone-900 text-xs flex items-center gap-1.5 flex-wrap">
+                        <span>Chọn món & Gửi Zalo</span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-200/90 text-amber-900 font-extrabold text-[10px] tracking-wide group-hover:bg-amber-300 transition-colors shadow-2xs">
+                          <Sparkles className="w-2.5 h-2.5 text-amber-700" />
+                          <span>Chạm xem hướng dẫn</span>
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-amber-600 group-hover:translate-x-1 transition-transform shrink-0" />
+                    </div>
+                    <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">
                       Thêm bánh vào giỏ, bấm gửi đơn là hệ thống tự soạn tin nhắn gửi thẳng tiệm.
                     </p>
                   </div>
-                </div>
+                </button>
 
                 <div className="flex items-start gap-3 p-3 rounded-2xl bg-stone-50 border border-stone-200/80">
                   <div className="w-7 h-7 rounded-xl bg-stone-900 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
@@ -160,6 +194,163 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
           </div>
         </div>
       </div>
+
+      {/* Gentle & Elegant Order Guide Popup Modal */}
+      {isOrderGuideOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-stone-950/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 transition-opacity"
+          onClick={() => setIsOrderGuideOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-7 shadow-2xl border border-amber-100 animate-gentle-modal overflow-hidden relative max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-stone-100 pb-4 shrink-0">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>HƯỚNG DẪN MUA HÀNG & ĐẶT MÓN</span>
+                </div>
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
+                  Quy Trình Đặt Bánh & Gửi Đơn Siêu Tốc
+                </h3>
+                <p className="text-xs sm:text-sm text-stone-500">
+                  Chỉ với 4 bước đơn giản – Tự chọn khẩu vị, nhận bánh nóng tận nơi!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsOrderGuideOpen(false)}
+                className="p-2 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer shrink-0"
+                aria-label="Đóng popup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Content */}
+            <div className="overflow-y-auto py-4 space-y-3.5 pr-1 text-left">
+              {/* Step 1 */}
+              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/70 hover:border-amber-300 transition-all">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                  1
+                </div>
+                <div className="space-y-1 text-xs">
+                  <h4 className="font-bold text-stone-900 text-sm flex items-center gap-1.5">
+                    <Coffee className="w-4 h-4 text-amber-600" />
+                    <span>Chọn Món & Tùy Biến Khẩu Vị</span>
+                  </h4>
+                  <p className="text-stone-600 leading-relaxed">
+                    Lướt danh mục bánh nướng & trà tươi. Bấm vào món để tùy chọn <strong>Size M / L</strong>, 
+                    chỉnh mức <strong>độ ngọt (0% – 100%)</strong>, <strong>lượng đá</strong> (hoặc uống nóng), 
+                    chọn thêm <strong>topping</strong> (trân châu, kem cheese) và ghi chú riêng cho tiệm.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80 hover:border-amber-200 transition-all">
+                <div className="w-8 h-8 rounded-xl bg-stone-800 text-amber-300 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                  2
+                </div>
+                <div className="space-y-1 text-xs">
+                  <h4 className="font-bold text-stone-900 text-sm flex items-center gap-1.5">
+                    <ShoppingBag className="w-4 h-4 text-stone-700" />
+                    <span>Mở Giỏ Hàng & Chọn Hình Thức Nhận</span>
+                  </h4>
+                  <p className="text-stone-600 leading-relaxed">
+                    Chọn <strong>Nhận tại quán (0đ phí ship)</strong> hoặc <strong>Giao hàng tận nơi (khu vực 10km)</strong>. 
+                    Bạn có thể chọn <strong>giao ngay</strong> hoặc <strong>hẹn ngày & giờ cụ thể</strong> để tiệm nướng bánh nóng đúng giờ tiệc/họp.
+                  </p>
+                  <div className="inline-block mt-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-medium text-[11px] border border-emerald-100">
+                    🛵 <em>Đồng giá ship thông minh: Đơn từ 200.000đ được Miễn phí giao hàng (Freeship)!</em>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80 hover:border-amber-200 transition-all">
+                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                  3
+                </div>
+                <div className="space-y-1 text-xs">
+                  <h4 className="font-bold text-stone-900 text-sm flex items-center gap-1.5">
+                    <Ticket className="w-4 h-4 text-purple-600" />
+                    <span>Áp Dụng Mã Giảm Giá & Tích Điểm VIP</span>
+                  </h4>
+                  <p className="text-stone-600 leading-relaxed">
+                    Nhập mã khuyến mãi (nếu có) để nhận ưu đãi. Nhập <strong>Số điện thoại</strong> để hệ thống tự động tra cứu điểm thưởng và trừ tiền trực tiếp vào hóa đơn (1 điểm = 1.000đ).
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/70 hover:border-amber-300 transition-all">
+                <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                  4
+                </div>
+                <div className="space-y-1 text-xs">
+                  <h4 className="font-bold text-stone-900 text-sm flex items-center gap-1.5">
+                    <QrCode className="w-4 h-4 text-amber-700" />
+                    <span>Bấm Gửi Đơn – Tiệm Soạn Zalo & VietQR Tức Thì</span>
+                  </h4>
+                  <p className="text-stone-600 leading-relaxed">
+                    Chọn thanh toán <strong>Quét mã VietQR động</strong> (tự điền số tiền và mã đơn chuẩn xác) hoặc <strong>Tiền mặt (COD)</strong> khi nhận bánh. 
+                    Hệ thống sẽ cấp mã đơn <span className="font-mono font-bold text-amber-800">#BS-xxxx</span> và hỗ trợ bạn gửi tin nhắn trực tiếp qua Zalo tiệm để xác nhận nhanh nhất!
+                  </p>
+                </div>
+              </div>
+
+              {/* Bonus Tip Box */}
+              <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/70 text-xs text-stone-700 space-y-1">
+                <div className="font-bold text-amber-900 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Theo Dõi Tiến Trình Làm Bánh & Pha Chế:</span>
+                </div>
+                <p className="text-[11px] text-stone-600">
+                  Bạn có thể bấm nút <strong>"Tra Cứu Đơn Hàng"</strong> ở đầu trang bất cứ lúc nào để xem trực tiếp bếp đang nướng bánh hay tài xế đang giao đến nhé!
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="border-t border-stone-100 pt-3.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
+              <a
+                href={`https://zalo.me/${SHOP_CONFIG.zaloPhone}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Chat Zalo Tiệm: {SHOP_CONFIG.hotline}</span>
+              </a>
+
+              <div className="w-full sm:w-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsOrderGuideOpen(false)}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Đã Hiểu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOrderGuideOpen(false);
+                    onScrollToCatalog();
+                  }}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Chọn Món Ngay</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
