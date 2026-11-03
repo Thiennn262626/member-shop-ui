@@ -91,11 +91,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel,
             {/* POS Quản lý cho chủ tiệm */}
             <button
               onClick={onOpenAdmin}
-              className="inline-flex items-center gap-1 p-2 sm:px-3 sm:py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs sm:text-sm font-medium transition-colors cursor-pointer"
-              title="Chuyển sang màn hình POS cho người bán"
+              className="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
+              title="Cổng Đăng Nhập Quản Lý & Bán Hàng POS"
             >
-              <Store className="w-4 h-4 text-stone-600" />
-              <span className="hidden lg:inline">Quản lý</span>
+              <Store className="w-4 h-4 text-amber-700" />
+              <span className="hidden sm:inline">Quản lý</span>
             </button>
           </div>
         </div>

@@ -131,11 +131,11 @@ export function PrintBillModal({ order, onClose }: PrintBillModalProps) {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-100 flex justify-center">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-100 flex justify-center">
           <div id="printable-thermal-area" className="w-full flex justify-center">
             {activeTab === 'bill' ? (
               /* --- HÓA ĐƠN K80 --- */
-              <div className="w-[340px] bg-white p-6 shadow-sm border border-slate-200 text-slate-800 font-mono text-xs rounded-lg print:border-none print:shadow-none print:w-full print:p-2">
+              <div className="w-full max-w-[340px] bg-white p-4 sm:p-6 shadow-sm border border-slate-200 text-slate-800 font-mono text-xs rounded-lg print:border-none print:shadow-none print:w-full print:p-2">
                 {/* Shop Header */}
                 <div className="text-center pb-4 border-b border-dashed border-slate-300">
                   <h2 className="text-base font-black tracking-wider uppercase text-slate-900">{shopConfig.shopName}</h2>

@@ -590,9 +590,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           {/* ====================================================== */}
           {/* THE MASTER MONTHLY CALENDAR GRID (TỜ LỊCH THÁNG)       */}
           {/* ====================================================== */}
-          <div className="bg-white rounded-3xl border border-stone-200 shadow-xs overflow-hidden">
-            {/* Weekday Headers */}
-            <div className="grid grid-cols-7 bg-stone-50 border-b border-stone-200 text-center text-xs font-bold text-stone-600 uppercase tracking-wider py-2.5">
+          <div className="bg-white rounded-3xl border border-stone-200 shadow-xs overflow-x-auto">
+            <div className="min-w-[760px]">
+              {/* Weekday Headers */}
+              <div className="grid grid-cols-7 bg-stone-50 border-b border-stone-200 text-center text-xs font-bold text-stone-600 uppercase tracking-wider py-2.5">
               {WEEKDAYS.map((wd, idx) => (
                 <div key={idx} className={idx >= 5 ? 'text-amber-700 font-extrabold' : ''}>
                   {wd}
@@ -727,6 +728,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 );
               })}
             </div>
+            </div>
           </div>
         </div>
       )}
@@ -760,8 +762,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
           </div>
 
           {/* Master Calendar */}
-          <div className="bg-white rounded-3xl border border-stone-200 shadow-xs overflow-hidden">
-            <div className="grid grid-cols-7 bg-stone-50 border-b border-stone-200 text-center text-xs font-bold text-stone-600 uppercase tracking-wider py-2.5">
+          <div className="bg-white rounded-3xl border border-stone-200 shadow-xs overflow-x-auto">
+            <div className="min-w-[760px]">
+              <div className="grid grid-cols-7 bg-stone-50 border-b border-stone-200 text-center text-xs font-bold text-stone-600 uppercase tracking-wider py-2.5">
               {WEEKDAYS.map((wd, idx) => (
                 <div key={idx} className={idx >= 5 ? 'text-amber-700 font-extrabold' : ''}>
                   {wd}
@@ -876,6 +879,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 );
               })}
             </div>
+            </div>
           </div>
         </div>
       )}
@@ -933,7 +937,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[760px]">
                 <thead>
                   <tr className="bg-stone-50 border-b border-stone-200 text-stone-500 font-bold uppercase tracking-wider text-[10px]">
                     <th className="p-3 pl-4">Nhân Viên</th>

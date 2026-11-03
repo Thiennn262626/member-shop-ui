@@ -406,9 +406,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         }`}
       >
-        {/* Top Brand Logo */}
-        <div>
-          <div className="p-5 border-b border-stone-800 flex items-center justify-between">
+        {/* Top Brand Logo & Navigation */}
+        <div className="overflow-y-auto flex-1 flex flex-col">
+          <div className="p-5 border-b border-stone-800 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
                 <Store className="w-6 h-6" />
@@ -502,7 +502,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         </div>
 
         {/* Footer Sidebar: Logout Action */}
-        <div className="p-3 border-t border-stone-800 space-y-2">
+        <div className="p-3 border-t border-stone-800 space-y-2 shrink-0">
           <button
             type="button"
             onClick={onLogout}
