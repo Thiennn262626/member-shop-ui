@@ -18,6 +18,7 @@ import type {
   Voucher,
   VoucherValidationResult,
   WorkShift,
+  WorkShiftStatus,
 } from '../types';
 import { calculateHoursBetween, formatCurrency } from '../utils/format';
 
@@ -2174,6 +2175,7 @@ class MockDatabase {
       ...payload,
       id: `ws-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       shiftCode,
+      shiftType: payload.shiftType || (payload.scheduledStartTime < '13:00' ? 'morning' : 'afternoon'),
       scheduledHours: scheduledHours || 8.0,
       createdAt: new Date().toISOString(),
     };
@@ -2340,6 +2342,76 @@ class MockDatabase {
 
     this.save(STORAGE_KEYS.PAYROLL_DATA, storage);
     window.dispatchEvent(new CustomEvent('bake_sip_payroll_updated'));
+  }
+
+  saveEmployeeMonthlySchedule(
+    staffId: string,
+    monthStr: string,
+    assignments: Array<{
+      date: string;
+      shiftType: 'morning' | 'afternoon';
+      notes?: string;
+    }>
+  ): WorkShift[] {
+    const staffList = this.getStaffAccounts();
+    const staff = staffList.find((s) => s.id === staffId);
+    if (!staff) throw new Error('Không tìm thấy nhân viên');
+
+    const allShifts = this.getWorkShifts();
+
+    // Giữ lại các ca của nhân viên khác, hoặc ca ở tháng khác,
+    // hoặc ca trong tháng này nhưng đã hoàn tất / có giờ thực tế
+    const preservedShifts = allShifts.filter((s) => {
+      if (s.staffId !== staffId) return true;
+      if (!s.date.startsWith(monthStr)) return true;
+      if (s.status === 'completed' || s.actualHours !== undefined) return true;
+      return false;
+    });
+
+    const now = new Date().toISOString();
+    const newShifts: WorkShift[] = assignments.map((item, idx) => {
+      const isMorning = item.shiftType === 'morning';
+      const scheduledStartTime = isMorning ? '06:30' : '14:30';
+      const scheduledEndTime = isMorning ? '14:30' : '22:30';
+      const shiftTitle = isMorning ? 'Ca Sáng (06:30 - 14:30)' : 'Ca Chiều (14:30 - 22:30)';
+      const dateCode = item.date.slice(5).replace('-', '');
+      const seq = String(idx + 1).padStart(2, '0');
+
+      return {
+        id: `ws-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+        shiftCode: `#WS-${dateCode}-${seq}`,
+        staffId: staff.id,
+        staffName: staff.name,
+        staffRole: staff.role,
+        date: item.date,
+        shiftTitle,
+        shiftType: item.shiftType,
+        scheduledStartTime,
+        scheduledEndTime,
+        scheduledHours: 8.0,
+        status: 'scheduled',
+        notes: item.notes || `Phân công ${shiftTitle.toLowerCase()}`,
+        createdAt: now,
+      };
+    });
+
+    const combined = [...newShifts, ...preservedShifts];
+    this.save(STORAGE_KEYS.WORK_SHIFTS, combined);
+    window.dispatchEvent(new CustomEvent('bake_sip_work_shifts_updated'));
+    return combined;
+  }
+
+  confirmDailyAttendance(
+    shiftId: string,
+    actualHours: number,
+    status: WorkShiftStatus = 'completed',
+    notes?: string
+  ): WorkShift {
+    return this.updateWorkShift(shiftId, {
+      actualHours: Number(actualHours),
+      status,
+      actualNotes: notes || `Đã chốt công cuối ngày: ${actualHours} giờ`,
+    });
   }
 }
 

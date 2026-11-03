@@ -302,6 +302,7 @@ export interface WorkShift {
   staffRole: AdminRole;
   date: string;               // YYYY-MM-DD
   shiftTitle: string;         // 'Ca Sáng (06:30 - 14:30)', 'Ca Chiều', 'Part-time 4h'...
+  shiftType?: 'morning' | 'afternoon'; // 'morning' = Ca Sáng, 'afternoon' = Ca Chiều
   
   // Giờ dự kiến
   scheduledStartTime: string; // '06:30'
