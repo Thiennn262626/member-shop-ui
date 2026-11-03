@@ -1,7 +1,7 @@
-import React from 'react';
-import { ShoppingBag, CreditCard, Store, Sparkles, Gift } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingBag, CreditCard, Store, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { SHOP_CONFIG } from '../../services/mockDb';
+import { mockDb } from '../../services/mockDb';
 
 interface HeaderProps {
   onOpenMemberLookup: () => void;
@@ -11,6 +11,13 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel, onOpenAdmin }) => {
   const { totalItems, openCart } = useCart();
+  const [shopConfig, setShopConfig] = useState(() => mockDb.getShopConfig());
+
+  useEffect(() => {
+    const handleUpdate = () => setShopConfig(mockDb.getShopConfig());
+    window.addEventListener('bake_sip_config_updated', handleUpdate);
+    return () => window.removeEventListener('bake_sip_config_updated', handleUpdate);
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">
@@ -22,17 +29,25 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel,
               🥐
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-serif text-lg sm:text-2xl font-bold tracking-tight text-stone-900 block leading-tight">
-                  {SHOP_CONFIG.shopName}
+                  {shopConfig.shopName}
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
-                  <Sparkles className="w-2.5 h-2.5" />
-                  Bánh Tươi 100%
-                </span>
+
+                {shopConfig.isOpen ? (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Đang mở bán
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-rose-800 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-300 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    Tạm nghỉ bán
+                  </span>
+                )}
               </div>
               <span className="text-[11px] sm:text-xs text-stone-500 font-medium">
-                {SHOP_CONFIG.tagline}
+                {shopConfig.tagline}
               </span>
             </div>
           </div>

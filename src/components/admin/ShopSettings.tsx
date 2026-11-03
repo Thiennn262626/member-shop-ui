@@ -9,33 +9,37 @@ import {
   MapPin,
   MessageSquare,
 } from 'lucide-react';
-import { SHOP_CONFIG } from '../../services/mockDb';
+import { mockDb } from '../../services/mockDb';
 
 export const ShopSettings: React.FC = () => {
-  const [shopName, setShopName] = useState(SHOP_CONFIG.shopName);
-  const [tagline, setTagline] = useState(SHOP_CONFIG.tagline);
-  const [hotline, setHotline] = useState(SHOP_CONFIG.hotline);
-  const [zaloPhone, setZaloPhone] = useState(SHOP_CONFIG.zaloPhone);
-  const [address, setAddress] = useState(SHOP_CONFIG.address);
+  const currentConfig = mockDb.getShopConfig();
+  const [shopName, setShopName] = useState(currentConfig.shopName);
+  const [tagline, setTagline] = useState(currentConfig.tagline);
+  const [hotline, setHotline] = useState(currentConfig.hotline);
+  const [zaloPhone, setZaloPhone] = useState(currentConfig.zaloPhone);
+  const [address, setAddress] = useState(currentConfig.address);
 
   // Bank Info
-  const [bankName, setBankName] = useState(SHOP_CONFIG.bank.bankName);
-  const [accountNumber, setAccountNumber] = useState(SHOP_CONFIG.bank.accountNumber);
-  const [accountHolder, setAccountHolder] = useState(SHOP_CONFIG.bank.accountHolder);
+  const [bankName, setBankName] = useState(currentConfig.bank.bankName);
+  const [accountNumber, setAccountNumber] = useState(currentConfig.bank.accountNumber);
+  const [accountHolder, setAccountHolder] = useState(currentConfig.bank.accountHolder);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    SHOP_CONFIG.shopName = shopName;
-    SHOP_CONFIG.tagline = tagline;
-    SHOP_CONFIG.hotline = hotline;
-    SHOP_CONFIG.zaloPhone = zaloPhone;
-    SHOP_CONFIG.address = address;
-
-    SHOP_CONFIG.bank.bankName = bankName;
-    SHOP_CONFIG.bank.accountNumber = accountNumber;
-    SHOP_CONFIG.bank.accountHolder = accountHolder;
+    mockDb.updateShopConfig({
+      shopName,
+      tagline,
+      hotline,
+      zaloPhone,
+      address,
+      bank: {
+        bankName,
+        accountNumber,
+        accountHolder,
+      },
+    });
 
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);

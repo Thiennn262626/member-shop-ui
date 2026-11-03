@@ -23,6 +23,7 @@ export interface ItemOptionItem {
   name: string;
   price: number;
   isDefault?: boolean;
+  isAvailable?: boolean; // true = còn hàng (mặc định), false = tạm hết hàng
 }
 
 export interface ItemOptionGroup {
@@ -161,6 +162,18 @@ export interface ShopConfig {
   pointToVndRatio: number;
   spendToPointRatio: number;
   bank: BankConfig;
+  isOpen: boolean; // Trạng thái nhận đơn hôm nay (Mở cửa / Tạm nghỉ bán)
+  pauseReason?: string; // Lý do tạm nghỉ (nếu có)
+}
+
+export interface GlobalOptionItem {
+  id: string;
+  name: string;
+  price: number;
+  groupId: string;
+  groupName: string;
+  isAvailable: boolean;
+  affectedProductsCount: number;
 }
 
 // 8. Phân quyền Người Bán & Tài Khoản Thu Ngân

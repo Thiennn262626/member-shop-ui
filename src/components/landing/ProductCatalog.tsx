@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { Search, Sparkles, Star, SlidersHorizontal, ShoppingBag } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Search, Sparkles, Star, SlidersHorizontal, ShoppingBag, Store } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { SHOP_CONFIG } from '../../services/mockDb';
-import type { Product, SelectedOptionChoice } from '../../types';
+import { mockDb, SHOP_CONFIG } from '../../services/mockDb';
+import type { Product, SelectedOptionChoice, ShopConfig } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { ItemCustomizationModal } from './ItemCustomizationModal';
 
@@ -20,10 +20,18 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
     lastAddedName,
   } = useCart();
 
+  const [shopConfig, setShopConfig] = useState<ShopConfig>(() => mockDb.getShopConfig());
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
   const [animatingProductId, setAnimatingProductId] = useState<string | null>(null);
+
+  // Sync shop config when admin toggles open/pause
+  useEffect(() => {
+    const handleConfig = () => setShopConfig(mockDb.getShopConfig());
+    window.addEventListener('bake_sip_config_updated', handleConfig);
+    return () => window.removeEventListener('bake_sip_config_updated', handleConfig);
+  }, []);
 
   const categories = useMemo(() => {
     const list = ['Tất cả'];
@@ -41,7 +49,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
       const matchSearch =
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return p.isActive && matchCategory && matchSearch;
+      return matchCategory && matchSearch;
     });
   }, [products, selectedCategory, searchQuery]);
 
@@ -51,6 +59,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
   };
 
   const handleOpenCustomization = (product: Product) => {
+    if (!shopConfig.isOpen || !product.isActive) return;
     setCustomizingProduct(product);
   };
 
@@ -67,6 +76,28 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
   return (
     <section id="catalog-section" className="py-8 sm:py-14 bg-[#fcfbfa]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        {/* BANNER NẾU TIỆM TẠM NGHỈ BÁN HÔM NAY */}
+        {!shopConfig.isOpen && (
+          <div className="mb-6 p-4 sm:p-5 rounded-3xl bg-rose-50 border border-rose-300 shadow-xs flex items-start sm:items-center gap-3.5 animate-fade-in">
+            <div className="w-11 h-11 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-rose-500/20">
+              <Store className="w-6 h-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-serif font-black text-rose-950 text-sm sm:text-base">
+                  Tiệm Tạm Nghỉ Bán Hôm Nay
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-200 text-rose-900">
+                  Tạm ngưng nhận đơn
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-rose-800 mt-0.5">
+                {shopConfig.pauseReason || 'Hôm nay tiệm tạm ngưng nhận đơn online để chuẩn bị nguyên liệu. Hẹn gặp lại quý khách!'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -131,7 +162,9 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                 <div
                   key={product.id}
                   className={`bg-white border rounded-2xl sm:rounded-3xl overflow-hidden transition-all flex flex-col group relative ${
-                    currentQuantity > 0
+                    !product.isActive
+                      ? 'border-stone-300 bg-stone-50/70 opacity-80'
+                      : currentQuantity > 0
                       ? 'border-amber-500 shadow-md shadow-amber-500/10 ring-1 ring-amber-500/30'
                       : 'border-stone-200/90 hover:border-amber-400 hover:shadow-lg'
                   }`}
@@ -139,27 +172,41 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                   {/* Image Container with Badges */}
                   <div
                     onClick={() => handleOpenCustomization(product)}
-                    className="relative aspect-4/3 sm:aspect-square bg-stone-100 overflow-hidden cursor-pointer"
+                    className={`relative aspect-4/3 sm:aspect-square bg-stone-100 overflow-hidden ${
+                      !product.isActive || !shopConfig.isOpen ? 'cursor-not-allowed' : 'cursor-pointer'
+                    }`}
                   >
                     <img
                       src={product.imageUrl}
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className={`w-full h-full object-cover transition-transform duration-500 ${
+                        !product.isActive ? 'grayscale contrast-125 opacity-60' : 'group-hover:scale-105'
+                      }`}
                       loading="lazy"
                     />
 
                     {/* Tag (Bán chạy / Mới ra lò / Signature) */}
-                    {product.tag && (
+                    {product.tag && product.isActive && (
                       <span className="absolute top-2 left-2 bg-stone-900/90 backdrop-blur-xs text-amber-300 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-lg shadow-xs">
                         {product.tag}
                       </span>
                     )}
 
-                    {/* Point Reward Badge */}
-                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-0.5 bg-amber-400/95 backdrop-blur-xs text-stone-950 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-lg shadow-xs">
-                      <Sparkles className="w-2.5 h-2.5" />
-                      +{earnedPoints}đ
-                    </span>
+                    {/* Out of stock overlay */}
+                    {!product.isActive ? (
+                      <div className="absolute inset-0 bg-stone-950/50 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-center">
+                        <span className="px-2.5 py-1 rounded-xl bg-rose-600 text-white font-extrabold text-[11px] sm:text-xs uppercase tracking-wider shadow-lg">
+                          🔴 Tạm Hết Món
+                        </span>
+                        <span className="text-[10px] text-stone-200 mt-1 font-medium">Hẹn bạn ngày mai nhé</span>
+                      </div>
+                    ) : (
+                      /* Point Reward Badge */
+                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-0.5 bg-amber-400/95 backdrop-blur-xs text-stone-950 font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-lg shadow-xs">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        +{earnedPoints}đ
+                      </span>
+                    )}
 
                     {/* Floating Add Effect Ripple */}
                     {isAnimating && (
@@ -185,7 +232,11 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
 
                       <h3
                         onClick={() => handleOpenCustomization(product)}
-                        className="font-serif font-bold text-stone-900 text-sm sm:text-base leading-snug line-clamp-2 group-hover:text-amber-800 transition-colors cursor-pointer hover:underline"
+                        className={`font-serif font-bold text-stone-900 text-sm sm:text-base leading-snug line-clamp-2 ${
+                          !product.isActive || !shopConfig.isOpen
+                            ? 'cursor-not-allowed opacity-75'
+                            : 'group-hover:text-amber-800 transition-colors cursor-pointer hover:underline'
+                        }`}
                       >
                         {product.name}
                       </h3>
@@ -209,21 +260,41 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                       </div>
 
                       {/* Nút bấm mở Tùy chọn Món & Ghi chú */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCustomization(product)}
-                        className={`inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
-                          currentQuantity > 0
-                            ? 'bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-xs'
-                            : 'bg-stone-900 hover:bg-stone-800 text-amber-300 shadow-xs'
-                        }`}
-                        title="Tùy chọn size, topping & ghi chú"
-                      >
-                        <SlidersHorizontal className="w-3.5 h-3.5" />
-                        <span>
-                          {currentQuantity > 0 ? `Đã chọn (${currentQuantity})` : 'Tùy chọn'}
-                        </span>
-                      </button>
+                      {!shopConfig.isOpen ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-stone-200 text-stone-500 cursor-not-allowed"
+                          title="Tiệm đang tạm nghỉ bán hôm nay"
+                        >
+                          <span>Tạm nghỉ</span>
+                        </button>
+                      ) : !product.isActive ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200 cursor-not-allowed"
+                          title="Món này hiện đang tạm hết nguyên liệu"
+                        >
+                          <span>Tạm hết</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCustomization(product)}
+                          className={`inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                            currentQuantity > 0
+                              ? 'bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-xs'
+                              : 'bg-stone-900 hover:bg-stone-800 text-amber-300 shadow-xs'
+                          }`}
+                          title="Tùy chọn size, topping & ghi chú"
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                          <span>
+                            {currentQuantity > 0 ? `Đã chọn (${currentQuantity})` : 'Tùy chọn'}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

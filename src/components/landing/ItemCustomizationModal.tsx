@@ -32,13 +32,16 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
       const initialMap: Record<string, ItemOptionItem[]> = {};
 
       product.optionGroups.forEach((group) => {
+        const availableOptions = group.options.filter((o) => o.isAvailable !== false);
         if (group.selection === 'only') {
-          // Find default option or pick the first if required
-          const defaultOpt = group.options.find((o) => o.isDefault) || (group.required ? group.options[0] : null);
+          // Find default option or pick the first available if required
+          const defaultOpt =
+            availableOptions.find((o) => o.isDefault) ||
+            (group.required && availableOptions.length > 0 ? availableOptions[0] : null);
           initialMap[group.id] = defaultOpt ? [defaultOpt] : [];
         } else {
-          // Multiple selection: start with preselected or empty
-          const defaultOpts = group.options.filter((o) => o.isDefault);
+          // Multiple selection: start with preselected available options
+          const defaultOpts = availableOptions.filter((o) => o.isDefault);
           initialMap[group.id] = defaultOpts;
         }
       });
@@ -54,6 +57,7 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
 
   // Handle clicking an option
   const handleSelectOption = (groupId: string, option: ItemOptionItem, isOnly: boolean) => {
+    if (option.isAvailable === false) return;
     setErrorMsg(null);
     setSelectedMap((prev) => {
       const currentList = prev[groupId] || [];
@@ -203,21 +207,34 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                     {/* Options list */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {group.options.map((opt) => {
+                        const isOutOfStock = opt.isAvailable === false;
                         const isSelected = currentSelections.some((o) => o.id === opt.id);
 
                         return (
                           <button
                             type="button"
                             key={opt.id}
+                            disabled={isOutOfStock}
                             onClick={() => handleSelectOption(group.id, opt, isOnly)}
-                            className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                              isSelected
-                                ? 'border-amber-600 bg-amber-50/80 text-stone-950 font-bold shadow-xs'
-                                : 'border-stone-200 hover:border-stone-300 text-stone-700 font-medium'
+                            className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                              isOutOfStock
+                                ? 'border-stone-200 bg-stone-100/70 text-stone-400 opacity-60 cursor-not-allowed'
+                                : isSelected
+                                ? 'border-amber-600 bg-amber-50/80 text-stone-950 font-bold shadow-xs cursor-pointer'
+                                : 'border-stone-200 hover:border-stone-300 text-stone-700 font-medium cursor-pointer'
                             }`}
                           >
                             <div className="min-w-0 pr-2">
-                              <div className="text-xs sm:text-sm truncate">{opt.name}</div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-xs sm:text-sm truncate ${isOutOfStock ? 'line-through text-stone-400' : ''}`}>
+                                  {opt.name}
+                                </span>
+                                {isOutOfStock && (
+                                  <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">
+                                    Tạm hết
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-[11px] text-stone-500 font-mono mt-0.5">
                                 {opt.price > 0 ? `+${formatCurrency(opt.price)}` : 'Miễn phí'}
                               </div>
@@ -226,12 +243,14 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                             {/* Checkmark or Radio circle */}
                             <div
                               className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${
-                                isSelected
+                                isOutOfStock
+                                  ? 'border-stone-200 bg-stone-200 text-stone-400'
+                                  : isSelected
                                   ? 'bg-amber-600 border-amber-600 text-white'
                                   : 'border-stone-300 bg-white'
                               }`}
                             >
-                              {isSelected && <Check className="w-3.5 h-3.5" />}
+                              {isSelected && !isOutOfStock && <Check className="w-3.5 h-3.5" />}
                             </div>
                           </button>
                         );

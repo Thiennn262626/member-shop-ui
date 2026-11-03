@@ -1,5 +1,6 @@
 import type {
   Customer,
+  GlobalOptionItem,
   ItemOptionGroup,
   MemberTier,
   Order,
@@ -21,6 +22,8 @@ export const SHOP_CONFIG: ShopConfig = {
   address: '68 Đường Hoa Sứ, Phường 7, Quận Phú Nhuận, TP.HCM',
   pointToVndRatio: 1000,   // 1 Điểm = 1.000 VNĐ
   spendToPointRatio: 10000, // 10.000 VNĐ = 1 Điểm
+  isOpen: true,
+  pauseReason: '',
   bank: {
     bankName: 'MBBank (Ngân Hàng Quân Đội)',
     accountNumber: '0901234567',
@@ -651,6 +654,7 @@ const STORAGE_KEYS = {
   ORDERS: 'bake_sip_orders_v5',
   TRANSACTIONS: 'bake_sip_transactions_v5',
   STAFF: 'bake_sip_staff_v5',
+  CONFIG: 'bake_sip_config_v5',
   REALTIME_PING: 'bake_sip_realtime_ping_v5',
 };
 
@@ -758,6 +762,137 @@ class MockDatabase {
     this.save(STORAGE_KEYS.PRODUCTS, filtered);
     this.broadcastProductUpdate();
     return true;
+  }
+
+  // Bật/tắt trạng thái kinh doanh của tất cả món (hoặc theo danh mục)
+  toggleAllProductsStatus(isActive: boolean, category?: string): Product[] {
+    const products = this.getProducts();
+    const updated = products.map((p) => {
+      if (!category || category === 'Tất cả' || p.category === category) {
+        return { ...p, isActive, updatedAt: new Date().toISOString() };
+      }
+      return p;
+    });
+    this.save(STORAGE_KEYS.PRODUCTS, updated);
+    this.broadcastProductUpdate();
+    return updated;
+  }
+
+  // Bật/tắt tình trạng còn hàng của một tùy chọn / topping cụ thể trên toàn bộ sản phẩm
+  toggleOptionAvailability(optionId: string, isAvailable: boolean): void {
+    const products = this.getProducts();
+    let changed = false;
+
+    products.forEach((prod) => {
+      if (prod.optionGroups) {
+        prod.optionGroups.forEach((group) => {
+          group.options.forEach((opt) => {
+            if (opt.id === optionId) {
+              opt.isAvailable = isAvailable;
+              changed = true;
+            }
+          });
+        });
+      }
+    });
+
+    if (changed) {
+      this.save(STORAGE_KEYS.PRODUCTS, products);
+      this.broadcastProductUpdate();
+    }
+  }
+
+  // Bật/tắt toàn bộ tùy chọn trong một nhóm (VD: tắt hết toàn bộ Topping trà sữa)
+  toggleOptionGroupAvailability(groupId: string, isAvailable: boolean): void {
+    const products = this.getProducts();
+    let changed = false;
+
+    products.forEach((prod) => {
+      if (prod.optionGroups) {
+        prod.optionGroups.forEach((group) => {
+          if (group.id === groupId) {
+            group.options.forEach((opt) => {
+              opt.isAvailable = isAvailable;
+              changed = true;
+            });
+          }
+        });
+      }
+    });
+
+    if (changed) {
+      this.save(STORAGE_KEYS.PRODUCTS, products);
+      this.broadcastProductUpdate();
+    }
+  }
+
+  // Lấy danh sách tổng hợp tất cả các Topping & Tùy Chọn đang có trên toàn bộ menu
+  getGlobalOptionsList(): GlobalOptionItem[] {
+    const products = this.getProducts();
+    const map = new Map<string, GlobalOptionItem>();
+
+    products.forEach((prod) => {
+      if (prod.optionGroups) {
+        prod.optionGroups.forEach((group) => {
+          group.options.forEach((opt) => {
+            if (!map.has(opt.id)) {
+              map.set(opt.id, {
+                id: opt.id,
+                name: opt.name,
+                price: opt.price,
+                groupId: group.id,
+                groupName: group.name,
+                isAvailable: opt.isAvailable !== false,
+                affectedProductsCount: 1,
+              });
+            } else {
+              const existing = map.get(opt.id)!;
+              existing.affectedProductsCount += 1;
+            }
+          });
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }
+
+  // --- SHOP CONFIG & TRẠNG THÁI MỞ CỬA / TẠM NGHỈ ---
+  getShopConfig(): ShopConfig {
+    const config = this.load<ShopConfig>(STORAGE_KEYS.CONFIG, SHOP_CONFIG);
+    if (!localStorage.getItem(STORAGE_KEYS.CONFIG)) {
+      this.save(STORAGE_KEYS.CONFIG, SHOP_CONFIG);
+    }
+    Object.assign(SHOP_CONFIG, config);
+    return config;
+  }
+
+  updateShopConfig(updates: Partial<ShopConfig>): ShopConfig {
+    const current = this.getShopConfig();
+    const updated: ShopConfig = {
+      ...current,
+      ...updates,
+      bank: {
+        ...current.bank,
+        ...(updates.bank || {}),
+      },
+    };
+    this.save(STORAGE_KEYS.CONFIG, updated);
+    Object.assign(SHOP_CONFIG, updated);
+    window.dispatchEvent(new CustomEvent('bake_sip_config_updated', { detail: updated }));
+    return updated;
+  }
+
+  toggleShopOpenStatus(isOpen: boolean, pauseReason?: string): ShopConfig {
+    return this.updateShopConfig({
+      isOpen,
+      pauseReason:
+        pauseReason !== undefined
+          ? pauseReason
+          : isOpen
+          ? ''
+          : 'Hôm nay tiệm tạm nghỉ nhận đơn online. Hẹn gặp lại quý khách!',
+    });
   }
 
   private broadcastProductUpdate(): void {

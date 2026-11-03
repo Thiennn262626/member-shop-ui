@@ -20,6 +20,7 @@ import {
   BarChart3,
   Users,
   UserCheck,
+  PackageX,
   Settings,
   LogOut,
   Menu,
@@ -32,6 +33,7 @@ import type { AdminUserData, Customer, Order, OrderStatus } from '../types';
 import { formatCurrency, formatDate, formatPhone } from '../utils/format';
 import { PosOrderCreator } from '../components/admin/PosOrderCreator';
 import { ProductManager } from '../components/admin/ProductManager';
+import { StockToggleManager } from '../components/admin/StockToggleManager';
 import { AdminAnalytics } from '../components/admin/AdminAnalytics';
 import { CustomerManager } from '../components/admin/CustomerManager';
 import { StaffManager } from '../components/admin/StaffManager';
@@ -42,7 +44,7 @@ interface AdminPageProps {
   adminUser?: AdminUserData;
 }
 
-type AdminViewType = 'analytics' | 'pos' | 'orders' | 'products' | 'customers' | 'staff' | 'settings';
+type AdminViewType = 'analytics' | 'pos' | 'orders' | 'stock' | 'products' | 'customers' | 'staff' | 'settings';
 
 export const AdminPage: React.FC<AdminPageProps> = ({
   onLogout,
@@ -317,6 +319,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       ownerOnly: false,
     },
     {
+      id: 'stock' as AdminViewType,
+      label: 'Báo Hết Món & Topping',
+      icon: PackageX,
+      badge: 'Bật/Tắt',
+      badgeColor: 'bg-rose-100 text-rose-900 border border-rose-200',
+      ownerOnly: false,
+    },
+    {
       id: 'products' as AdminViewType,
       label: isCashier ? 'Xem Thực Đơn (Bật/Tắt)' : 'Thực Đơn Sản Phẩm',
       icon: UtensilsCrossed,
@@ -538,6 +548,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
             <PosOrderCreator
               onOrderCreated={handlePosOrderCreated}
               onSwitchToOrdersList={() => setAdminView('orders')}
+              onSwitchToStockManager={() => setAdminView('stock')}
             />
           )}
 
@@ -1163,6 +1174,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
               </div>
             </main>
           )}
+
+          {/* TAB 3.5: QUẢN LÝ BÁO HẾT MÓN & TOPPING */}
+          {adminView === 'stock' && <StockToggleManager />}
 
           {/* TAB 4: QUẢN LÝ THỰC ĐƠN & SẢN PHẨM */}
           {adminView === 'products' && <ProductManager userRole={adminUser.role} />}

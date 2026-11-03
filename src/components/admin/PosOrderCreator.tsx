@@ -18,6 +18,7 @@ import {
   X,
   Copy,
   Check,
+  PackageX,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { mockDb, SHOP_CONFIG, TIER_CONFIG } from '../../services/mockDb';
@@ -28,11 +29,13 @@ import { ItemCustomizationModal } from '../landing/ItemCustomizationModal';
 interface PosOrderCreatorProps {
   onOrderCreated: (orderId: string) => void;
   onSwitchToOrdersList: () => void;
+  onSwitchToStockManager?: () => void;
 }
 
 export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
   onOrderCreated,
   onSwitchToOrdersList,
+  onSwitchToStockManager,
 }) => {
   // Products & Categories
   const [products, setProducts] = useState<Product[]>(() => mockDb.getProducts());
@@ -97,7 +100,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
         !productSearch.trim() ||
         p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
         p.description.toLowerCase().includes(productSearch.toLowerCase());
-      return matchCat && matchQuery && p.isActive;
+      return matchCat && matchQuery;
     });
   }, [products, selectedCategory, productSearch]);
 
@@ -126,6 +129,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
 
   // Thêm món vào hóa đơn
   const handleProductClick = (product: Product) => {
+    if (!product.isActive) return;
     if (product.optionGroups && product.optionGroups.length > 0) {
       setItemToCustomize(product);
     } else {
@@ -335,16 +339,31 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
               </span>
             </div>
 
-            {/* Ô tìm kiếm món */}
-            <div className="relative sm:w-64">
-              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Tìm tên món (croissant, trà...)"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 focus:bg-white transition-all"
-              />
+            {/* Ô tìm kiếm món & Nút chuyển nhanh sang Báo Hết Món */}
+            <div className="flex items-center gap-2">
+              {onSwitchToStockManager && (
+                <button
+                  type="button"
+                  onClick={onSwitchToStockManager}
+                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                  title="Mở giao diện báo hết hàng tức thời"
+                >
+                  <PackageX className="w-3.5 h-3.5 text-rose-600" />
+                  <span className="hidden sm:inline">Báo Hết Món/Topping</span>
+                  <span className="sm:hidden">Báo Hết</span>
+                </button>
+              )}
+
+              <div className="relative sm:w-64 flex-1">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Tìm tên món (croissant, trà...)"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 focus:bg-white transition-all"
+                />
+              </div>
             </div>
           </div>
 
@@ -374,33 +393,50 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 overflow-y-auto max-h-[calc(100vh-250px)] pr-1">
           {filteredProducts.map((product) => {
             const hasOptions = product.optionGroups && product.optionGroups.length > 0;
+            const isOutOfStock = !product.isActive;
             return (
               <div
                 key={product.id}
-                onClick={() => handleProductClick(product)}
-                className="group relative bg-white rounded-2xl border border-stone-200 hover:border-amber-500 p-3 flex flex-col justify-between transition-all duration-200 hover:shadow-md cursor-pointer select-none active:scale-[0.98]"
+                onClick={() => !isOutOfStock && handleProductClick(product)}
+                className={`group relative bg-white rounded-2xl border p-3 flex flex-col justify-between transition-all duration-200 select-none ${
+                  isOutOfStock
+                    ? 'border-rose-200 bg-stone-50/80 opacity-70 cursor-not-allowed'
+                    : 'border-stone-200 hover:border-amber-500 hover:shadow-md cursor-pointer active:scale-[0.98]'
+                }`}
               >
                 {/* Product Badge */}
-                {product.tag && (
+                {isOutOfStock ? (
+                  <span className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
+                    Hết món
+                  </span>
+                ) : product.tag ? (
                   <span className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md bg-stone-900/80 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider backdrop-blur-xs">
                     {product.tag}
                   </span>
-                )}
+                ) : null}
 
                 {/* Product Image */}
                 <div className="w-full aspect-square rounded-xl bg-stone-100 overflow-hidden mb-2 relative">
                   <img
                     src={product.imageUrl}
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className={`w-full h-full object-cover transition-transform duration-300 ${
+                      isOutOfStock ? 'grayscale contrast-125 opacity-60' : 'group-hover:scale-105'
+                    }`}
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-stone-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {!isOutOfStock && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-stone-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  )}
                 </div>
 
                 {/* Product Info */}
                 <div className="space-y-1">
-                  <h4 className="font-serif font-bold text-stone-900 text-xs sm:text-sm line-clamp-1 group-hover:text-amber-800 transition-colors">
+                  <h4
+                    className={`font-serif font-bold text-xs sm:text-sm line-clamp-1 transition-colors ${
+                      isOutOfStock ? 'text-stone-400' : 'text-stone-900 group-hover:text-amber-800'
+                    }`}
+                  >
                     {product.name}
                   </h4>
                   <p className="text-[11px] text-stone-400 line-clamp-1">{product.description}</p>
@@ -412,16 +448,22 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
                     {formatCurrency(product.price)}
                   </span>
 
-                  <span
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
-                      hasOptions
-                        ? 'bg-amber-100 text-amber-900 group-hover:bg-amber-500 group-hover:text-stone-950'
-                        : 'bg-stone-900 text-amber-300 group-hover:bg-amber-600 group-hover:text-white'
-                    }`}
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>{hasOptions ? 'Tùy chọn' : 'Thêm'}</span>
-                  </span>
+                  {isOutOfStock ? (
+                    <span className="px-2 py-1 rounded-lg text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                      Tạm hết
+                    </span>
+                  ) : (
+                    <span
+                      className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all ${
+                        hasOptions
+                          ? 'bg-amber-100 text-amber-900 group-hover:bg-amber-500 group-hover:text-stone-950'
+                          : 'bg-stone-900 text-amber-300 group-hover:bg-amber-600 group-hover:text-white'
+                      }`}
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>{hasOptions ? 'Tùy chọn' : 'Thêm'}</span>
+                    </span>
+                  )}
                 </div>
               </div>
             );

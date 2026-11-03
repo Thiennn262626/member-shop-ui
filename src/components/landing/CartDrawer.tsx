@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Trash2, Plus, Minus, ShoppingBag, Sparkles, Tag, MessageSquare, ArrowRight, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../../context/CartContext';
@@ -14,16 +14,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   const { items, isCartOpen, closeCart, updateQuantity, removeFromCart, totalAmount, estimatedPoints, clearCart } =
     useCart();
 
+  const [shopConfig, setShopConfig] = useState(() => mockDb.getShopConfig());
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [orderNote, setOrderNote] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    const handleConfig = () => setShopConfig(mockDb.getShopConfig());
+    window.addEventListener('bake_sip_config_updated', handleConfig);
+    return () => window.removeEventListener('bake_sip_config_updated', handleConfig);
+  }, []);
+
   if (!isCartOpen) return null;
 
   const handleCreateOrder = () => {
     setErrorMessage(null);
+
+    if (!shopConfig.isOpen) {
+      setErrorMessage(
+        shopConfig.pauseReason || 'Hôm nay tiệm đang tạm nghỉ bán. Hẹn gặp lại quý khách vào ngày mai!'
+      );
+      return;
+    }
 
     // Validate phone number
     const cleanPhone = customerPhone.trim().replace(/\D/g, '');
@@ -306,10 +320,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
               <button
                 type="button"
                 onClick={handleCreateOrder}
-                className="w-full py-3.5 px-4 bg-stone-900 hover:bg-stone-800 text-amber-300 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-stone-900/20 active:scale-95 transition-all cursor-pointer"
+                disabled={!shopConfig.isOpen}
+                className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all cursor-pointer ${
+                  !shopConfig.isOpen
+                    ? 'bg-rose-100 text-rose-800 border border-rose-300 cursor-not-allowed opacity-90'
+                    : 'bg-stone-900 hover:bg-stone-800 text-amber-300 shadow-stone-900/20'
+                }`}
               >
-                <span>Xác Nhận Đặt Hàng & Lấy Mã Đơn</span>
-                <ArrowRight className="w-4 h-4 text-amber-400" />
+                {!shopConfig.isOpen ? (
+                  <span>Tiệm Đang Tạm Nghỉ Bán Hôm Nay</span>
+                ) : (
+                  <>
+                    <span>Xác Nhận Đặt Hàng & Lấy Mã Đơn</span>
+                    <ArrowRight className="w-4 h-4 text-amber-400" />
+                  </>
+                )}
               </button>
 
               <p className="text-[11px] text-center text-stone-400">
