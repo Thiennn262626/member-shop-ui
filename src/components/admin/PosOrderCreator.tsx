@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   Plus,
@@ -35,10 +35,26 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
   onSwitchToOrdersList,
 }) => {
   // Products & Categories
-  const products = useMemo(() => mockDb.getProducts(), []);
-  const customers = useMemo(() => mockDb.getCustomers(), []);
+  const [products, setProducts] = useState<Product[]>(() => mockDb.getProducts());
+  const [customers, setCustomers] = useState<Customer[]>(() => mockDb.getCustomers());
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [productSearch, setProductSearch] = useState<string>('');
+
+  // Lắng nghe cập nhật sản phẩm & khách hàng Realtime
+  useEffect(() => {
+    const handleProductChange = () => {
+      setProducts(mockDb.getProducts());
+    };
+    const handleCustomerChange = () => {
+      setCustomers(mockDb.getCustomers());
+    };
+    window.addEventListener('bake_sip_product_updated', handleProductChange);
+    window.addEventListener('bake_sip_order_updated', handleCustomerChange);
+    return () => {
+      window.removeEventListener('bake_sip_product_updated', handleProductChange);
+      window.removeEventListener('bake_sip_order_updated', handleCustomerChange);
+    };
+  }, []);
 
   // Cart / Bill State
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);

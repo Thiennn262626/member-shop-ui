@@ -136,7 +136,7 @@ export function calculateTier(totalSpent: number): MemberTier {
 }
 
 // --- OPTION GROUPS PRESETS ---
-const DRINK_TEA_OPTION_GROUPS: ItemOptionGroup[] = [
+export const DRINK_TEA_OPTION_GROUPS: ItemOptionGroup[] = [
   {
     id: 'size',
     name: 'Chọn Kích Thước (Size Ly)',
@@ -186,7 +186,7 @@ const DRINK_TEA_OPTION_GROUPS: ItemOptionGroup[] = [
   },
 ];
 
-const DRINK_COFFEE_OPTION_GROUPS: ItemOptionGroup[] = [
+export const DRINK_COFFEE_OPTION_GROUPS: ItemOptionGroup[] = [
   {
     id: 'size',
     name: 'Kích Thước Cà Phê',
@@ -220,7 +220,7 @@ const DRINK_COFFEE_OPTION_GROUPS: ItemOptionGroup[] = [
   },
 ];
 
-const BAKERY_SAVORY_OPTION_GROUPS: ItemOptionGroup[] = [
+export const BAKERY_SAVORY_OPTION_GROUPS: ItemOptionGroup[] = [
   {
     id: 'heat',
     name: 'Yêu Cầu Độ Nóng Bánh',
@@ -244,7 +244,7 @@ const BAKERY_SAVORY_OPTION_GROUPS: ItemOptionGroup[] = [
   },
 ];
 
-const BAKERY_SWEET_OPTION_GROUPS: ItemOptionGroup[] = [
+export const BAKERY_SWEET_OPTION_GROUPS: ItemOptionGroup[] = [
   {
     id: 'heat',
     name: 'Yêu Cầu Hâm Nóng',
@@ -268,7 +268,7 @@ const BAKERY_SWEET_OPTION_GROUPS: ItemOptionGroup[] = [
   },
 ];
 
-const CAKE_DESSERT_OPTION_GROUPS: ItemOptionGroup[] = [
+export const CAKE_DESSERT_OPTION_GROUPS: ItemOptionGroup[] = [
   {
     id: 'box',
     name: 'Quy Cách Đóng Gói',
@@ -290,6 +290,14 @@ const CAKE_DESSERT_OPTION_GROUPS: ItemOptionGroup[] = [
       { id: 'acc-card', name: 'Thiệp Ghi Lời Chúc Viết Tay', price: 5000 },
     ],
   },
+];
+
+export const OPTION_PRESETS = [
+  { id: 'tea', label: '🧋 Preset Trà & Nước Trái Cây (Size, Đường, Đá, Topping)', groups: DRINK_TEA_OPTION_GROUPS },
+  { id: 'coffee', label: '☕ Preset Cà Phê (Size, Độ ngọt, Kem muối, Thạch)', groups: DRINK_COFFEE_OPTION_GROUPS },
+  { id: 'savory', label: '🥐 Preset Bánh Mì & Mặn (Độ nóng lò, Phô mai, Chà bông)', groups: BAKERY_SAVORY_OPTION_GROUPS },
+  { id: 'sweet', label: '🍰 Preset Bánh Ngọt (Hâm nóng, Sốt dâu/hạnh nhân)', groups: BAKERY_SWEET_OPTION_GROUPS },
+  { id: 'cake', label: '🎂 Preset Bánh Kem & Tiệc (Hộp quà, Nến, Thiệp)', groups: CAKE_DESSERT_OPTION_GROUPS },
 ];
 
 const SEED_PRODUCTS: Product[] = [
@@ -655,6 +663,75 @@ class MockDatabase {
       this.save(STORAGE_KEYS.PRODUCTS, SEED_PRODUCTS);
     }
     return list;
+  }
+
+  getProductById(id: string): Product | undefined {
+    return this.getProducts().find((p) => p.id === id);
+  }
+
+  addProduct(payload: Omit<Product, 'id' | 'updatedAt'>): Product {
+    const products = this.getProducts();
+    const now = new Date().toISOString();
+    const newProduct: Product = {
+      ...payload,
+      id: `prod-${Date.now()}`,
+      updatedAt: now,
+    };
+    products.unshift(newProduct);
+    this.save(STORAGE_KEYS.PRODUCTS, products);
+    this.broadcastProductUpdate();
+    return newProduct;
+  }
+
+  updateProduct(id: string, updates: Partial<Product>): Product {
+    const products = this.getProducts();
+    const index = products.findIndex((p) => p.id === id);
+    if (index === -1) {
+      throw new Error('Không tìm thấy sản phẩm cần cập nhật');
+    }
+    const updated: Product = {
+      ...products[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    products[index] = updated;
+    this.save(STORAGE_KEYS.PRODUCTS, products);
+    this.broadcastProductUpdate();
+    return updated;
+  }
+
+  toggleProductStatus(id: string): Product {
+    const products = this.getProducts();
+    const index = products.findIndex((p) => p.id === id);
+    if (index === -1) {
+      throw new Error('Không tìm thấy sản phẩm');
+    }
+    products[index].isActive = !products[index].isActive;
+    products[index].updatedAt = new Date().toISOString();
+    this.save(STORAGE_KEYS.PRODUCTS, products);
+    this.broadcastProductUpdate();
+    return products[index];
+  }
+
+  deleteProduct(id: string): boolean {
+    const products = this.getProducts();
+    const filtered = products.filter((p) => p.id !== id);
+    if (filtered.length === products.length) return false;
+    this.save(STORAGE_KEYS.PRODUCTS, filtered);
+    this.broadcastProductUpdate();
+    return true;
+  }
+
+  private broadcastProductUpdate(): void {
+    try {
+      window.dispatchEvent(new CustomEvent('bake_sip_product_updated'));
+      localStorage.setItem(
+        STORAGE_KEYS.REALTIME_PING,
+        JSON.stringify({ type: 'product_update', timestamp: Date.now() })
+      );
+    } catch (e) {
+      console.error('Product broadcast error:', e);
+    }
   }
 
   // --- CUSTOMERS ---

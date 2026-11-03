@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '../components/landing/Header';
 import { Hero } from '../components/landing/Hero';
 import { ProductCatalog } from '../components/landing/ProductCatalog';
@@ -17,11 +17,22 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAdmin }) => {
-  const [products] = useState<Product[]>(() => mockDb.getProducts());
+  const [products, setProducts] = useState<Product[]>(() => mockDb.getProducts());
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [lookupPhone, setLookupPhone] = useState('');
   const [isWheelOpen, setIsWheelOpen] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+
+  // Lắng nghe cập nhật sản phẩm Realtime khi người bán sửa trong admin
+  useEffect(() => {
+    const handleProductChange = () => {
+      setProducts(mockDb.getProducts());
+    };
+    window.addEventListener('bake_sip_product_updated', handleProductChange);
+    return () => {
+      window.removeEventListener('bake_sip_product_updated', handleProductChange);
+    };
+  }, []);
 
   const scrollToCatalog = () => {
     const el = document.getElementById('catalog-section');

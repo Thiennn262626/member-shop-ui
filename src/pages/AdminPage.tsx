@@ -17,20 +17,22 @@ import {
   XCircle,
   PlusCircle,
   ListOrdered,
+  UtensilsCrossed,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { mockDb, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../services/mockDb';
 import type { Customer, Order, OrderStatus } from '../types';
 import { formatCurrency, formatDate, formatPhone } from '../utils/format';
 import { PosOrderCreator } from '../components/admin/PosOrderCreator';
+import { ProductManager } from '../components/admin/ProductManager';
 
 interface AdminPageProps {
   onBackToLanding: () => void;
 }
 
 export const AdminPage: React.FC<AdminPageProps> = ({ onBackToLanding }) => {
-  // Mode chuyển đổi giữa "Tạo đơn POS" và "Quản lý đơn hàng"
-  const [adminView, setAdminView] = useState<'pos' | 'orders'>('pos');
+  // Mode chuyển đổi giữa "Tạo đơn POS", "Quản lý đơn hàng" và "Quản lý sản phẩm"
+  const [adminView, setAdminView] = useState<'pos' | 'orders' | 'products'>('pos');
 
   const [orderSearchCode, setOrderSearchCode] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -301,20 +303,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBackToLanding }) => {
           <button
             type="button"
             onClick={() => setAdminView('pos')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               adminView === 'pos'
                 ? 'bg-amber-500 text-stone-950 shadow-sm'
                 : 'text-stone-300 hover:text-white hover:bg-stone-700/60'
             }`}
           >
             <PlusCircle className="w-4 h-4" />
-            <span>1. Lên Đơn Mới (POS)</span>
+            <span>1. Lên Đơn (POS)</span>
           </button>
 
           <button
             type="button"
             onClick={() => setAdminView('orders')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer relative ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer relative ${
               adminView === 'orders'
                 ? 'bg-amber-500 text-stone-950 shadow-sm'
                 : 'text-stone-300 hover:text-white hover:bg-stone-700/60'
@@ -327,6 +329,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBackToLanding }) => {
                 {pendingCount}
               </span>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAdminView('products')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              adminView === 'products'
+                ? 'bg-amber-500 text-stone-950 shadow-sm'
+                : 'text-stone-300 hover:text-white hover:bg-stone-700/60'
+            }`}
+          >
+            <UtensilsCrossed className="w-4 h-4" />
+            <span>3. Thực Đơn Món</span>
           </button>
         </div>
       </header>
@@ -961,6 +976,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBackToLanding }) => {
           </div>
         </main>
       )}
+
+      {/* VIEW 3: QUẢN LÝ THỰC ĐƠN & SẢN PHẨM */}
+      {adminView === 'products' && <ProductManager />}
     </div>
   );
 };
