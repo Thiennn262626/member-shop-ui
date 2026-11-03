@@ -117,6 +117,8 @@ export interface Order {
   // Trạng thái vận hành
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  paymentMethod?: 'cash' | 'vietqr';
+  createdSource?: 'web' | 'pos';
   
   // Mốc thời gian các giai đoạn
   createdAt: string;

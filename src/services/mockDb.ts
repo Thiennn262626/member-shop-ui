@@ -771,6 +771,126 @@ class MockDatabase {
     return { order: newOrder, customer };
   }
 
+  // 1.b. TẠO ĐƠN HÀNG TỪ MÀN HÌNH POS THU NGÂN (BÁN TRỰC TIẾP TẠI QUẦY / LÊN ĐƠN GIAO HÀNG)
+  createPosOrder(payload: {
+    customerName: string;
+    customerPhone: string;
+    items: Order['items'];
+    note?: string;
+    discountPointsUsed?: number;
+    paymentMethod?: 'cash' | 'vietqr';
+    status?: OrderStatus;
+    paymentStatus?: PaymentStatus;
+    shipperInfo?: string;
+  }): { order: Order; customer: Customer } {
+    const {
+      customerName,
+      customerPhone,
+      items,
+      note,
+      discountPointsUsed = 0,
+      paymentMethod = 'cash',
+      status = 'completed',
+      paymentStatus = 'paid',
+      shipperInfo,
+    } = payload;
+    const now = new Date().toISOString();
+
+    const customer = this.createOrUpdateCustomer(customerName, customerPhone);
+    const subTotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+
+    const validDiscountPoints = Math.min(discountPointsUsed, customer.availablePoints);
+    const discountAmount = validDiscountPoints * SHOP_CONFIG.pointToVndRatio;
+    const orderTotal = Math.max(0, subTotal - discountAmount);
+
+    const tierInfo = TIER_CONFIG[customer.tier];
+    const earnedPoints = Math.floor((orderTotal / SHOP_CONFIG.spendToPointRatio) * tierInfo.pointMultiplier);
+
+    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+    const orderCode = `#POS-${randomDigits}`;
+
+    const newOrder: Order = {
+      id: `ord-pos-${Date.now()}`,
+      orderCode,
+      customerId: customer.id,
+      customerPhone: customer.phone,
+      customerName: customer.name,
+      items,
+      subTotal,
+      discountPointsUsed: validDiscountPoints,
+      discountAmount,
+      orderTotal,
+      earnedPoints,
+      note,
+      status,
+      paymentStatus,
+      paymentMethod,
+      createdSource: 'pos',
+      shipperInfo,
+      createdAt: now,
+      confirmedAt: status === 'confirmed' || status === 'completed' || status === 'shipping' ? now : undefined,
+      paidAt: paymentStatus === 'paid' ? now : undefined,
+      completedAt: status === 'completed' ? now : undefined,
+    };
+
+    // Nếu đơn hàng tạo ở trạng thái COMPLETED (Bán xong thu tiền ngay tại quầy):
+    if (status === 'completed') {
+      customer.totalSpent += newOrder.orderTotal;
+      customer.tier = calculateTier(customer.totalSpent);
+      customer.redeemedPoints += validDiscountPoints;
+      customer.earnedPoints += earnedPoints;
+      customer.availablePoints = customer.earnedPoints - customer.redeemedPoints;
+      customer.updatedAt = now;
+
+      const customers = this.getCustomers();
+      const cIndex = customers.findIndex((c) => c.id === customer.id);
+      if (cIndex >= 0) customers[cIndex] = customer;
+      this.save(STORAGE_KEYS.CUSTOMERS, customers);
+
+      // Ghi lịch sử giao dịch điểm
+      const transactions = this.getTransactions();
+
+      if (validDiscountPoints > 0) {
+        transactions.unshift({
+          id: `tx-${Date.now()}-redeem`,
+          customerId: customer.id,
+          type: 'ORDER',
+          source: 'REDEEM',
+          orderId: newOrder.id,
+          orderCode: newOrder.orderCode,
+          points: -validDiscountPoints,
+          balanceAfter: customer.availablePoints - earnedPoints,
+          note: `Đổi ${validDiscountPoints} điểm giảm ${discountAmount.toLocaleString('vi-VN')}đ tại POS đơn ${newOrder.orderCode}`,
+          createdAt: now,
+        });
+      }
+
+      if (earnedPoints > 0) {
+        transactions.unshift({
+          id: `tx-${Date.now()}-earn`,
+          customerId: customer.id,
+          type: 'ORDER',
+          source: 'EARN',
+          orderId: newOrder.id,
+          orderCode: newOrder.orderCode,
+          points: earnedPoints,
+          balanceAfter: customer.availablePoints,
+          note: `Tích điểm hoàn tất đơn POS ${newOrder.orderCode}`,
+          createdAt: now,
+        });
+      }
+
+      this.save(STORAGE_KEYS.TRANSACTIONS, transactions);
+    }
+
+    const orders = this.getOrders();
+    orders.unshift(newOrder);
+    this.save(STORAGE_KEYS.ORDERS, orders);
+
+    this.broadcastRealtimeUpdate(newOrder);
+    return { order: newOrder, customer };
+  }
+
   // 2. CẬP NHẬT TRẠNG THÁI VẬN HÀNH & THANH TOÁN THEO TỪNG GIAI ĐOẠN (REALTIME)
   updateOrderStatus(
     orderCodeOrId: string,
