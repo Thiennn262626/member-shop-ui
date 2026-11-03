@@ -75,7 +75,7 @@ export const LiveActivityToast: React.FC = () => {
 
   return (
     <div
-      className={`fixed bottom-20 sm:bottom-6 left-4 z-30 max-w-xs sm:max-w-sm transition-all duration-500 transform ${
+      className={`hidden sm:block fixed bottom-6 left-4 z-30 max-w-sm transition-all duration-500 transform ${
         isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-4 opacity-0 scale-95 pointer-events-none'
       }`}
     >

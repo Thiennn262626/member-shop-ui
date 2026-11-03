@@ -122,14 +122,14 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
       <div onClick={onClose} className="fixed inset-0 bg-stone-950/70 backdrop-blur-xs transition-opacity" />
 
       <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
-        <div className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        <div className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[92vh]">
           {/* Header */}
-          <div className="p-4 sm:p-5 border-b border-stone-200 flex items-center justify-between bg-stone-50 shrink-0">
+          <div className="p-3 sm:p-5 border-b border-stone-200 flex items-center justify-between bg-stone-50 shrink-0">
             <div>
-              <h3 className="font-serif font-bold text-stone-900 text-base sm:text-lg">
+              <h3 className="font-serif font-bold text-stone-900 text-sm sm:text-lg">
                 Tùy Chọn Món & Ghi Chú
               </h3>
-              <span className="text-[11px] text-stone-500">
+              <span className="hidden sm:block text-[11px] text-stone-500">
                 Tùy chỉnh kích thước, topping và ghi chú riêng cho món này
               </span>
             </div>
@@ -137,35 +137,35 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
               onClick={onClose}
               className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
 
           {/* Body Scrollable */}
-          <div className="p-4 sm:p-6 overflow-y-auto space-y-6">
+          <div className="p-3 sm:p-6 overflow-y-auto space-y-3.5 sm:space-y-6">
             {/* Product Summary */}
-            <div className="flex items-center gap-3.5 pb-4 border-b border-stone-100">
+            <div className="flex items-center gap-2.5 sm:gap-3.5 pb-3 sm:pb-4 border-b border-stone-100">
               <img
                 src={product.imageUrl}
                 alt={product.name}
-                className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-2xl bg-stone-100 shrink-0"
+                className="w-12 h-12 sm:w-20 sm:h-20 object-cover rounded-xl sm:rounded-2xl bg-stone-100 shrink-0"
               />
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md inline-block mb-1">
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-md inline-block mb-0.5">
                   {product.category}
                 </span>
-                <h4 className="font-serif font-bold text-stone-900 text-base sm:text-lg truncate">
+                <h4 className="font-serif font-bold text-stone-900 text-sm sm:text-lg truncate">
                   {product.name}
                 </h4>
-                <div className="text-xs font-bold text-amber-700 mt-0.5">
-                  Giá gốc: {formatCurrency(product.price)}
+                <div className="text-xs font-bold text-amber-700 mt-0.5 font-mono">
+                  {formatCurrency(product.price)}
                 </div>
               </div>
             </div>
 
             {/* Error message banner */}
             {errorMsg && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{errorMsg}</span>
               </div>
@@ -178,7 +178,7 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                 const currentSelections = selectedMap[group.id] || [];
 
                 return (
-                  <div key={group.id} className="space-y-2.5">
+                  <div key={group.id} className="space-y-1.5 sm:space-y-2.5">
                     {/* Group Title and Requirement Badges */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -187,25 +187,25 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+                      <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
                         {group.required ? (
-                          <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-200">
+                          <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-200">
                             Bắt buộc
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-600">
+                          <span className="px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600">
                             Tùy chọn
                           </span>
                         )}
 
-                        <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
+                        <span className="px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
                           {isOnly ? 'Chọn 1' : 'Chọn nhiều'}
                         </span>
                       </div>
                     </div>
 
                     {/* Options list */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                       {group.options.map((opt) => {
                         const isOutOfStock = opt.isAvailable === false;
                         const isSelected = currentSelections.some((o) => o.id === opt.id);
@@ -216,7 +216,7 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                             key={opt.id}
                             disabled={isOutOfStock}
                             onClick={() => handleSelectOption(group.id, opt, isOnly)}
-                            className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                            className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl border text-left flex items-center justify-between transition-all ${
                               isOutOfStock
                                 ? 'border-stone-200 bg-stone-100/70 text-stone-400 opacity-60 cursor-not-allowed'
                                 : isSelected
@@ -230,19 +230,19 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                                   {opt.name}
                                 </span>
                                 {isOutOfStock && (
-                                  <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">
-                                    Tạm hết
+                                  <span className="text-[9px] sm:text-[10px] font-black uppercase px-1 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">
+                                    Hết
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-stone-500 font-mono mt-0.5">
+                              <div className="text-[10px] sm:text-[11px] text-stone-500 font-mono mt-0.5">
                                 {opt.price > 0 ? `+${formatCurrency(opt.price)}` : 'Miễn phí'}
                               </div>
                             </div>
 
                             {/* Checkmark or Radio circle */}
                             <div
-                              className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border transition-colors ${
+                              className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md sm:rounded-lg flex items-center justify-center shrink-0 border transition-colors ${
                                 isOutOfStock
                                   ? 'border-stone-200 bg-stone-200 text-stone-400'
                                   : isSelected
@@ -250,7 +250,7 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                                   : 'border-stone-300 bg-white'
                               }`}
                             >
-                              {isSelected && !isOutOfStock && <Check className="w-3.5 h-3.5" />}
+                              {isSelected && !isOutOfStock && <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
                             </div>
                           </button>
                         );
@@ -264,41 +264,41 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
             )}
 
             {/* ITEM-LEVEL NOTE INPUT (GHI CHÚ RIÊNG CHO MÓN NÀY) */}
-            <div className="pt-2 border-t border-stone-100 space-y-2">
+            <div className="pt-2 border-t border-stone-100 space-y-1.5">
               <label className="text-xs sm:text-sm font-bold text-stone-900 flex items-center gap-1.5">
-                <MessageSquare className="w-4 h-4 text-amber-700" />
-                <span>Ghi chú riêng cho món này (Tùy chọn)</span>
+                <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700" />
+                <span>Ghi chú riêng cho món này:</span>
               </label>
               <textarea
                 rows={2}
-                placeholder="VD: Hâm bánh thật nóng giòn, không lấy hành ngò, để đá riêng mang đi xa, cắm nến sinh nhật giúp mình..."
+                placeholder="VD: Hâm bánh thật giòn, không lấy hành ngò, để đá riêng..."
                 value={itemNote}
                 onChange={(e) => setItemNote(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-300 rounded-2xl text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 focus:bg-white transition-all resize-none"
+                className="w-full px-3 py-1.5 sm:py-2.5 bg-stone-50 border border-stone-300 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 focus:bg-white transition-all resize-none"
               />
             </div>
           </div>
 
           {/* Footer Action Bar */}
-          <div className="p-4 sm:p-5 border-t border-stone-200 bg-stone-50 flex items-center justify-between gap-3 shrink-0">
+          <div className="p-3 sm:p-5 border-t border-stone-200 bg-stone-50 flex items-center justify-between gap-2 sm:gap-3 shrink-0">
             {/* Quantity Selector */}
-            <div className="flex items-center border border-stone-300 rounded-2xl overflow-hidden bg-white shadow-xs">
+            <div className="flex items-center border border-stone-300 rounded-xl sm:rounded-2xl overflow-hidden bg-white shadow-xs">
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="p-2 sm:p-2.5 hover:bg-stone-100 text-stone-600 transition-colors cursor-pointer"
+                className="p-1.5 sm:p-2.5 hover:bg-stone-100 text-stone-600 transition-colors cursor-pointer"
               >
-                <Minus className="w-4 h-4" />
+                <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
-              <span className="w-8 text-center font-extrabold text-sm text-stone-900 font-mono">
+              <span className="w-7 sm:w-8 text-center font-extrabold text-xs sm:text-sm text-stone-900 font-mono">
                 {quantity}
               </span>
               <button
                 type="button"
                 onClick={() => setQuantity((q) => q + 1)}
-                className="p-2 sm:p-2.5 hover:bg-stone-100 text-stone-600 transition-colors cursor-pointer"
+                className="p-1.5 sm:p-2.5 hover:bg-stone-100 text-stone-600 transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             </div>
 
@@ -306,9 +306,9 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
             <button
               type="button"
               onClick={handleConfirm}
-              className="flex-1 py-3 px-4 bg-stone-900 hover:bg-stone-800 text-amber-300 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer"
+              className="flex-1 py-2.5 sm:py-3 px-3 sm:px-4 bg-stone-900 hover:bg-stone-800 text-amber-300 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 shadow-md active:scale-95 transition-all cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
               <span>Thêm Vào Giỏ &bull; {formatCurrency(totalPrice)}</span>
             </button>
           </div>
