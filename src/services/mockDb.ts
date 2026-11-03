@@ -1108,6 +1108,41 @@ class MockDatabase {
     }
     return list;
   }
+
+  // Điều chỉnh điểm thưởng khách hàng thủ công (Cộng / Trừ)
+  adjustCustomerPoints(customerId: string, pointsDelta: number, note: string): Customer {
+    const customers = this.getCustomers();
+    const customer = customers.find((c) => c.id === customerId);
+    if (!customer) {
+      throw new Error('Không tìm thấy khách hàng');
+    }
+    const now = new Date().toISOString();
+    customer.availablePoints = Math.max(0, customer.availablePoints + pointsDelta);
+    if (pointsDelta > 0) {
+      customer.earnedPoints += pointsDelta;
+    } else {
+      customer.redeemedPoints += Math.abs(pointsDelta);
+    }
+    customer.updatedAt = now;
+    this.save(STORAGE_KEYS.CUSTOMERS, customers);
+
+    // Ghi sổ giao dịch
+    const transactions = this.getTransactions();
+    transactions.unshift({
+      id: `tx-adjust-${Date.now()}`,
+      customerId: customer.id,
+      type: 'MANUAL',
+      source: 'ADJUST',
+      points: pointsDelta,
+      balanceAfter: customer.availablePoints,
+      note: note || (pointsDelta > 0 ? 'Thưởng điểm chăm sóc khách hàng' : 'Trừ điểm điều chỉnh'),
+      createdAt: now,
+    });
+    this.save(STORAGE_KEYS.TRANSACTIONS, transactions);
+
+    window.dispatchEvent(new CustomEvent('bake_sip_customer_updated', { detail: customer }));
+    return customer;
+  }
 }
 
 export const mockDb = new MockDatabase();
