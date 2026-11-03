@@ -5,6 +5,7 @@ import type {
   GlobalOptionItem,
   ItemOptionGroup,
   MemberTier,
+  MonthlyPayrollSummary,
   Order,
   OrderStatus,
   OrderStatusInfo,
@@ -16,8 +17,9 @@ import type {
   TierBenefit,
   Voucher,
   VoucherValidationResult,
+  WorkShift,
 } from '../types';
-import { formatCurrency } from '../utils/format';
+import { calculateHoursBetween, formatCurrency } from '../utils/format';
 
 export const SHOP_CONFIG: ShopConfig = {
   shopName: 'Bake & Sip',
@@ -650,6 +652,7 @@ const SEED_STAFF_ACCOUNTS: StaffAccount[] = [
     role: 'owner',
     phone: '0901234567',
     shift: 'Toàn Thời Gian (Quản Trị)',
+    hourlyRate: 50000,
     isActive: true,
     pinCode: '123456',
     createdAt: '2026-01-01T08:00:00.000Z',
@@ -661,6 +664,7 @@ const SEED_STAFF_ACCOUNTS: StaffAccount[] = [
     role: 'cashier',
     phone: '0988111222',
     shift: 'Ca Sáng (06:30 - 14:30)',
+    hourlyRate: 28000,
     isActive: true,
     pinCode: '123456',
     createdAt: '2026-01-15T08:00:00.000Z',
@@ -672,11 +676,263 @@ const SEED_STAFF_ACCOUNTS: StaffAccount[] = [
     role: 'cashier',
     phone: '0912345678',
     shift: 'Ca Chiều (14:30 - 22:30)',
+    hourlyRate: 28000,
     isActive: true,
     pinCode: '123456',
     createdAt: '2026-02-01T08:00:00.000Z',
   },
+  {
+    id: 'staff-4',
+    username: 'barista',
+    name: 'Phạm Bảo Nam (Pha Chế & Thu Ngân)',
+    role: 'cashier',
+    phone: '0933444555',
+    shift: 'Linh Hoạt (Part-time)',
+    hourlyRate: 26000,
+    isActive: true,
+    pinCode: '123456',
+    createdAt: '2026-02-15T08:00:00.000Z',
+  },
+  {
+    id: 'staff-5',
+    username: 'baker',
+    name: 'Đỗ Cẩm Tú (Bếp Bánh Nóng)',
+    role: 'cashier',
+    phone: '0977888999',
+    shift: 'Ca Sáng (Bếp Bánh)',
+    hourlyRate: 32000,
+    isActive: true,
+    pinCode: '123456',
+    createdAt: '2026-03-01T08:00:00.000Z',
+  },
 ];
+
+function generateSeedWorkShifts(): WorkShift[] {
+  const shifts: WorkShift[] = [];
+  const now = new Date();
+
+  const formatDateISO = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  // 1. Quá khứ 14 ngày (đã hoàn tất & chấm công)
+  for (let i = 14; i >= 1; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = formatDateISO(d);
+    const dateCode = dateStr.slice(5).replace('-', '');
+
+    // Ca Sáng
+    const staffMorningId = i % 2 === 0 ? 'staff-2' : 'staff-4';
+    const staffMorningName = i % 2 === 0 ? 'Trần Thị Thu Ngân (Ca Sáng)' : 'Phạm Bảo Nam (Pha Chế & Thu Ngân)';
+    shifts.push({
+      id: `seed-ws-past-m-${i}`,
+      shiftCode: `#WS-${dateCode}-01`,
+      staffId: staffMorningId,
+      staffName: staffMorningName,
+      staffRole: 'cashier',
+      date: dateStr,
+      shiftTitle: 'Ca Sáng (06:30 - 14:30)',
+      scheduledStartTime: '06:30',
+      scheduledEndTime: '14:30',
+      scheduledHours: 8.0,
+      actualStartTime: '06:30',
+      actualEndTime: '14:30',
+      actualHours: 8.0,
+      status: 'completed',
+      notes: 'Trực quầy thu ngân & ra bánh nóng',
+      actualNotes: 'Đúng giờ, bàn giao két đủ',
+      createdAt: d.toISOString(),
+    });
+
+    // Ca Chiều (Lê Hoàng Yến) - có 1 ngày xin nghỉ phép có lý do
+    const isLeave = i === 4;
+    shifts.push({
+      id: `seed-ws-past-a-${i}`,
+      shiftCode: `#WS-${dateCode}-02`,
+      staffId: 'staff-3',
+      staffName: 'Lê Hoàng Yến (Ca Chiều)',
+      staffRole: 'cashier',
+      date: dateStr,
+      shiftTitle: 'Ca Chiều (14:30 - 22:30)',
+      scheduledStartTime: '14:30',
+      scheduledEndTime: '22:30',
+      scheduledHours: 8.0,
+      actualStartTime: isLeave ? undefined : '14:30',
+      actualEndTime: isLeave ? undefined : '22:30',
+      actualHours: isLeave ? 0 : 8.0,
+      status: isLeave ? 'leave_excused' : 'completed',
+      notes: 'Trực ca chiều & chốt két cuối ngày',
+      actualNotes: isLeave ? 'Xin nghỉ phép khám bệnh (Chủ tiệm đã duyệt)' : 'Hoàn tất ca làm việc',
+      createdAt: d.toISOString(),
+    });
+
+    // Ca Bếp Bánh (Đỗ Cẩm Tú) - 6h mỗi ngày
+    if (i % 2 === 1) {
+      shifts.push({
+        id: `seed-ws-past-b-${i}`,
+        shiftCode: `#WS-${dateCode}-03`,
+        staffId: 'staff-5',
+        staffName: 'Đỗ Cẩm Tú (Bếp Bánh Nóng)',
+        staffRole: 'cashier',
+        date: dateStr,
+        shiftTitle: 'Ca Bếp Sáng (05:30 - 11:30)',
+        scheduledStartTime: '05:30',
+        scheduledEndTime: '11:30',
+        scheduledHours: 6.0,
+        actualStartTime: '05:30',
+        actualEndTime: '11:30',
+        actualHours: 6.0,
+        status: 'completed',
+        notes: 'Nướng mẻ bánh croissant & phô mai đầu giờ',
+        actualNotes: 'Nướng đủ 120 phần bánh',
+        createdAt: d.toISOString(),
+      });
+    }
+
+    // Ca Tối Tăng Cường (Phạm Bảo Nam)
+    if (i % 3 === 0) {
+      shifts.push({
+        id: `seed-ws-past-e-${i}`,
+        shiftCode: `#WS-${dateCode}-04`,
+        staffId: 'staff-4',
+        staffName: 'Phạm Bảo Nam (Pha Chế & Thu Ngân)',
+        staffRole: 'cashier',
+        date: dateStr,
+        shiftTitle: 'Ca Tối Tăng Cường (18:00 - 22:30)',
+        scheduledStartTime: '18:00',
+        scheduledEndTime: '22:30',
+        scheduledHours: 4.5,
+        actualStartTime: '18:00',
+        actualEndTime: '22:30',
+        actualHours: 4.5,
+        status: 'completed',
+        notes: 'Hỗ trợ đóng gói đơn ship Zalo cao điểm',
+        actualNotes: 'Check-in đúng giờ',
+        createdAt: d.toISOString(),
+      });
+    }
+  }
+
+  // 2. Ca Hôm Nay (Đang diễn ra hoặc sắp tới)
+  const todayStr = formatDateISO(now);
+  const todayCode = todayStr.slice(5).replace('-', '');
+
+  shifts.push({
+    id: 'seed-ws-today-01',
+    shiftCode: `#WS-${todayCode}-01`,
+    staffId: 'staff-2',
+    staffName: 'Trần Thị Thu Ngân (Ca Sáng)',
+    staffRole: 'cashier',
+    date: todayStr,
+    shiftTitle: 'Ca Sáng (06:30 - 14:30)',
+    scheduledStartTime: '06:30',
+    scheduledEndTime: '14:30',
+    scheduledHours: 8.0,
+    actualStartTime: '06:30',
+    status: 'in_progress',
+    notes: 'Trực quầy chính, kiểm tra két đầu ca',
+    actualNotes: 'Đã check-in vào ca lúc 06:30',
+    createdAt: now.toISOString(),
+  });
+
+  shifts.push({
+    id: 'seed-ws-today-02',
+    shiftCode: `#WS-${todayCode}-02`,
+    staffId: 'staff-3',
+    staffName: 'Lê Hoàng Yến (Ca Chiều)',
+    staffRole: 'cashier',
+    date: todayStr,
+    shiftTitle: 'Ca Chiều (14:30 - 22:30)',
+    scheduledStartTime: '14:30',
+    scheduledEndTime: '22:30',
+    scheduledHours: 8.0,
+    status: 'scheduled',
+    notes: 'Nhận bàn giao ca từ bạn Ngân, chốt két cuối ngày',
+    createdAt: now.toISOString(),
+  });
+
+  shifts.push({
+    id: 'seed-ws-today-03',
+    shiftCode: `#WS-${todayCode}-03`,
+    staffId: 'staff-4',
+    staffName: 'Phạm Bảo Nam (Pha Chế & Thu Ngân)',
+    staffRole: 'cashier',
+    date: todayStr,
+    shiftTitle: 'Ca Tối Tăng Cường (18:00 - 22:30)',
+    scheduledStartTime: '18:00',
+    scheduledEndTime: '22:30',
+    scheduledHours: 4.5,
+    status: 'scheduled',
+    notes: 'Hỗ trợ đóng gói giờ đông khách',
+    createdAt: now.toISOString(),
+  });
+
+  // 3. Tương lai 7 ngày tiếp theo (Đã xếp lịch dự kiến)
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    const dateStr = formatDateISO(d);
+    const dateCode = dateStr.slice(5).replace('-', '');
+
+    shifts.push({
+      id: `seed-ws-future-m-${i}`,
+      shiftCode: `#WS-${dateCode}-01`,
+      staffId: i % 2 === 0 ? 'staff-2' : 'staff-4',
+      staffName: i % 2 === 0 ? 'Trần Thị Thu Ngân (Ca Sáng)' : 'Phạm Bảo Nam (Pha Chế & Thu Ngân)',
+      staffRole: 'cashier',
+      date: dateStr,
+      shiftTitle: 'Ca Sáng (06:30 - 14:30)',
+      scheduledStartTime: '06:30',
+      scheduledEndTime: '14:30',
+      scheduledHours: 8.0,
+      status: 'scheduled',
+      notes: 'Trực quầy ca sáng',
+      createdAt: now.toISOString(),
+    });
+
+    shifts.push({
+      id: `seed-ws-future-a-${i}`,
+      shiftCode: `#WS-${dateCode}-02`,
+      staffId: 'staff-3',
+      staffName: 'Lê Hoàng Yến (Ca Chiều)',
+      staffRole: 'cashier',
+      date: dateStr,
+      shiftTitle: 'Ca Chiều (14:30 - 22:30)',
+      scheduledStartTime: '14:30',
+      scheduledEndTime: '22:30',
+      scheduledHours: 8.0,
+      status: 'scheduled',
+      notes: 'Trực quầy ca chiều',
+      createdAt: now.toISOString(),
+    });
+
+    if (i % 2 === 1) {
+      shifts.push({
+        id: `seed-ws-future-b-${i}`,
+        shiftCode: `#WS-${dateCode}-03`,
+        staffId: 'staff-5',
+        staffName: 'Đỗ Cẩm Tú (Bếp Bánh Nóng)',
+        staffRole: 'cashier',
+        date: dateStr,
+        shiftTitle: 'Ca Bếp Sáng (05:30 - 11:30)',
+        scheduledStartTime: '05:30',
+        scheduledEndTime: '11:30',
+        scheduledHours: 6.0,
+        status: 'scheduled',
+        notes: 'Làm bánh mẻ sáng',
+        createdAt: now.toISOString(),
+      });
+    }
+  }
+
+  return shifts;
+}
+
+const SEED_WORK_SHIFTS: WorkShift[] = generateSeedWorkShifts();
 
 const SEED_VOUCHERS: Voucher[] = [
   {
@@ -773,6 +1029,8 @@ const STORAGE_KEYS = {
   CONFIG: 'bake_sip_config_v5',
   VOUCHERS: 'bake_sip_vouchers_v5',
   SHIFTS: 'bake_sip_shifts_v5',
+  WORK_SHIFTS: 'bake_sip_work_shifts_v5',
+  PAYROLL_DATA: 'bake_sip_payroll_data_v5',
   REALTIME_PING: 'bake_sip_realtime_ping_v5',
 };
 
@@ -1879,6 +2137,209 @@ class MockDatabase {
     this.save(STORAGE_KEYS.SHIFTS, shifts);
     window.dispatchEvent(new CustomEvent('bake_sip_shift_updated'));
     return shift;
+  }
+
+  // --- WORK SHIFTS & SCHEDULE ROSTER (XẾP CA & CHẤM CÔNG THỰC TẾ) ---
+  getWorkShifts(staffId?: string, monthOrDate?: string): WorkShift[] {
+    const list = this.load<WorkShift[]>(STORAGE_KEYS.WORK_SHIFTS, SEED_WORK_SHIFTS);
+    if (!localStorage.getItem(STORAGE_KEYS.WORK_SHIFTS)) {
+      this.save(STORAGE_KEYS.WORK_SHIFTS, SEED_WORK_SHIFTS);
+    }
+
+    let filtered = [...list];
+    if (staffId) {
+      filtered = filtered.filter((s) => s.staffId === staffId);
+    }
+    if (monthOrDate) {
+      filtered = filtered.filter((s) => s.date.startsWith(monthOrDate));
+    }
+    return filtered.sort((a, b) => {
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      return a.scheduledStartTime.localeCompare(b.scheduledStartTime);
+    });
+  }
+
+  addWorkShift(payload: Omit<WorkShift, 'id' | 'shiftCode' | 'createdAt'>): WorkShift {
+    const shifts = this.load<WorkShift[]>(STORAGE_KEYS.WORK_SHIFTS, SEED_WORK_SHIFTS);
+    const dateStr = payload.date.replace(/-/g, '').slice(4); // MMdd
+    const seq = String(shifts.length + 1).padStart(2, '0');
+    const shiftCode = `#WS-${dateStr}-${seq}`;
+
+    let scheduledHours = payload.scheduledHours;
+    if (!scheduledHours && payload.scheduledStartTime && payload.scheduledEndTime) {
+      scheduledHours = calculateHoursBetween(payload.scheduledStartTime, payload.scheduledEndTime);
+    }
+
+    const newShift: WorkShift = {
+      ...payload,
+      id: `ws-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      shiftCode,
+      scheduledHours: scheduledHours || 8.0,
+      createdAt: new Date().toISOString(),
+    };
+
+    shifts.unshift(newShift);
+    this.save(STORAGE_KEYS.WORK_SHIFTS, shifts);
+    window.dispatchEvent(new CustomEvent('bake_sip_work_shifts_updated'));
+    return newShift;
+  }
+
+  updateWorkShift(id: string, updates: Partial<WorkShift>): WorkShift {
+    const shifts = this.load<WorkShift[]>(STORAGE_KEYS.WORK_SHIFTS, SEED_WORK_SHIFTS);
+    const index = shifts.findIndex((s) => s.id === id);
+    if (index === -1) {
+      throw new Error('Không tìm thấy ca làm việc cần cập nhật');
+    }
+
+    let actualHours = updates.actualHours !== undefined ? updates.actualHours : shifts[index].actualHours;
+    const start = updates.actualStartTime || shifts[index].actualStartTime;
+    const end = updates.actualEndTime || shifts[index].actualEndTime;
+    if (start && end && updates.actualHours === undefined) {
+      actualHours = calculateHoursBetween(start, end);
+    }
+
+    shifts[index] = {
+      ...shifts[index],
+      ...updates,
+      actualHours,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.save(STORAGE_KEYS.WORK_SHIFTS, shifts);
+    window.dispatchEvent(new CustomEvent('bake_sip_work_shifts_updated'));
+    return shifts[index];
+  }
+
+  deleteWorkShift(id: string): boolean {
+    const shifts = this.load<WorkShift[]>(STORAGE_KEYS.WORK_SHIFTS, SEED_WORK_SHIFTS);
+    const filtered = shifts.filter((s) => s.id !== id);
+    this.save(STORAGE_KEYS.WORK_SHIFTS, filtered);
+    window.dispatchEvent(new CustomEvent('bake_sip_work_shifts_updated'));
+    return true;
+  }
+
+  checkInWorkShift(id: string, time?: string): WorkShift {
+    const now = new Date();
+    const timeStr = time || `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    return this.updateWorkShift(id, {
+      status: 'in_progress',
+      actualStartTime: timeStr,
+      actualNotes: `Điểm danh vào ca lúc ${timeStr}`,
+    });
+  }
+
+  checkOutWorkShift(id: string, time?: string, actualNotes?: string): WorkShift {
+    const shifts = this.load<WorkShift[]>(STORAGE_KEYS.WORK_SHIFTS, SEED_WORK_SHIFTS);
+    const target = shifts.find((s) => s.id === id);
+    if (!target) throw new Error('Không tìm thấy ca làm việc');
+
+    const now = new Date();
+    const timeStr = time || `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const start = target.actualStartTime || target.scheduledStartTime;
+    const hours = calculateHoursBetween(start, timeStr);
+
+    return this.updateWorkShift(id, {
+      status: 'completed',
+      actualEndTime: timeStr,
+      actualHours: hours,
+      actualNotes: actualNotes || `Đã hoàn tất ca làm (${hours} giờ)`,
+    });
+  }
+
+  recordWorkShiftLeave(id: string, type: 'leave_excused' | 'leave_unexcused', reason: string): WorkShift {
+    return this.updateWorkShift(id, {
+      status: type,
+      actualHours: 0,
+      actualNotes: reason,
+    });
+  }
+
+  // --- MONTHLY PAYROLL (BẢNG LƯƠNG & CHỐT CÔNG THÁNG) ---
+  getMonthlyPayroll(monthStr: string): MonthlyPayrollSummary[] {
+    const staffList = this.getStaffAccounts();
+    const shifts = this.getWorkShifts(undefined, monthStr);
+    const payrollStorage = this.load<Record<string, { allowance?: number; deduction?: number; isFinalized?: boolean; finalizedAt?: string; finalizedBy?: string }>>(
+      STORAGE_KEYS.PAYROLL_DATA,
+      {}
+    );
+
+    return staffList.map((staff) => {
+      const staffShifts = shifts.filter((s) => s.staffId === staff.id);
+      const totalScheduledShifts = staffShifts.length;
+      const completedShifts = staffShifts.filter((s) => s.status === 'completed');
+      const totalCompletedShifts = completedShifts.length;
+      const totalLeaveShifts = staffShifts.filter(
+        (s) => s.status === 'leave_excused' || s.status === 'leave_unexcused'
+      ).length;
+
+      const totalScheduledHours = staffShifts.reduce((sum, s) => sum + (s.scheduledHours || 0), 0);
+      const totalActualHours = completedShifts.reduce(
+        (sum, s) => sum + (s.actualHours !== undefined ? s.actualHours : s.scheduledHours),
+        0
+      );
+
+      const hourlyRate = staff.hourlyRate || (staff.role === 'owner' ? 50000 : 28000);
+      const baseSalary = Math.round(totalActualHours * hourlyRate);
+
+      const key = `${monthStr}_${staff.id}`;
+      const savedInfo = payrollStorage[key] || {};
+      const allowance = savedInfo.allowance || 0;
+      const deduction = savedInfo.deduction || 0;
+      const finalSalary = Math.max(0, baseSalary + allowance - deduction);
+
+      return {
+        staffId: staff.id,
+        staffName: staff.name,
+        month: monthStr,
+        totalScheduledShifts,
+        totalCompletedShifts,
+        totalLeaveShifts,
+        totalScheduledHours: Math.round(totalScheduledHours * 10) / 10,
+        totalActualHours: Math.round(totalActualHours * 10) / 10,
+        hourlyRate,
+        baseSalary,
+        allowance,
+        deduction,
+        finalSalary,
+        isFinalized: !!savedInfo.isFinalized,
+        finalizedAt: savedInfo.finalizedAt,
+        finalizedBy: savedInfo.finalizedBy,
+      };
+    });
+  }
+
+  savePayrollAdjustments(
+    monthStr: string,
+    staffId: string,
+    adjustments: { allowance?: number; deduction?: number }
+  ): void {
+    const storage = this.load<Record<string, any>>(STORAGE_KEYS.PAYROLL_DATA, {});
+    const key = `${monthStr}_${staffId}`;
+    storage[key] = {
+      ...(storage[key] || {}),
+      ...adjustments,
+    };
+    this.save(STORAGE_KEYS.PAYROLL_DATA, storage);
+    window.dispatchEvent(new CustomEvent('bake_sip_payroll_updated'));
+  }
+
+  finalizeMonthlyPayroll(monthStr: string, finalizedBy: string): void {
+    const storage = this.load<Record<string, any>>(STORAGE_KEYS.PAYROLL_DATA, {});
+    const staffList = this.getStaffAccounts();
+    const now = new Date().toISOString();
+
+    staffList.forEach((s) => {
+      const key = `${monthStr}_${s.id}`;
+      storage[key] = {
+        ...(storage[key] || {}),
+        isFinalized: true,
+        finalizedAt: now,
+        finalizedBy,
+      };
+    });
+
+    this.save(STORAGE_KEYS.PAYROLL_DATA, storage);
+    window.dispatchEvent(new CustomEvent('bake_sip_payroll_updated'));
   }
 }
 

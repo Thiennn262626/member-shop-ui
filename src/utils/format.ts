@@ -23,6 +23,19 @@ export function formatDate(isoString: string): string {
 
 export const formatDateTime = formatDate;
 
+export function calculateHoursBetween(startTime: string, endTime: string): number {
+  if (!startTime || !endTime) return 0;
+  try {
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    let diffMinutes = endH * 60 + endM - (startH * 60 + startM);
+    if (diffMinutes < 0) diffMinutes += 24 * 60; // Ca qua đêm
+    return Math.round((diffMinutes / 60) * 10) / 10;
+  } catch {
+    return 0;
+  }
+}
+
 export function formatPhone(phone: string): string {
   const clean = phone.replace(/\D/g, '');
   if (clean.length === 10) {

@@ -78,7 +78,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   // Bảo vệ route/tab: nếu thu ngân cố tình truy cập tab của chủ tiệm thì redirect về POS
   useEffect(() => {
-    if (isCashier && ['analytics', 'staff', 'settings', 'vouchers'].includes(adminView)) {
+    if (isCashier && ['analytics', 'settings', 'vouchers'].includes(adminView)) {
       setAdminView('pos');
     }
   }, [isCashier, adminView]);
@@ -378,11 +378,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     },
     {
       id: 'staff' as AdminViewType,
-      label: 'Tài Khoản & Ca Trực',
+      label: isCashier ? 'Lịch Làm Việc Của Tôi' : 'Phân Ca & Chấm Công Nhân Sự',
       icon: UserCheck,
-      badge: 'Chủ Tiệm',
-      badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300',
-      ownerOnly: true,
+      badge: isCashier ? 'Điểm Danh' : 'Bảng Lương',
+      badgeColor: isCashier
+        ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+        : 'bg-amber-100 text-amber-900 border border-amber-300',
+      ownerOnly: false,
     },
     {
       id: 'settings' as AdminViewType,
@@ -1293,8 +1295,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           {/* TAB 5: QUẢN LÝ KHÁCH HÀNG CRM */}
           {adminView === 'customers' && <CustomerManager userRole={adminUser.role} />}
 
-          {/* TAB 6: QUẢN LÝ TÀI KHOẢN THU NGÂN & NHÂN VIÊN */}
-          {adminView === 'staff' && !isCashier && <StaffManager />}
+          {/* TAB 6: PHÂN CA, CHẤM CÔNG & QUẢN LÝ NHÂN SỰ */}
+          {adminView === 'staff' && (
+            <StaffManager
+              currentStaff={{
+                id: adminUser.id,
+                name: adminUser.name,
+                username: adminUser.username,
+                pinCode: '0000',
+                role: adminUser.role,
+                shift: adminUser.shift || 'Ca Linh Hoạt',
+                hourlyRate: adminUser.hourlyRate || (adminUser.role === 'owner' ? 50000 : 28000),
+                isActive: true,
+                createdAt: new Date().toISOString(),
+              }}
+              userRole={adminUser.role}
+            />
+          )}
 
           {/* TAB 7: CÀI ĐẶT CỬA HÀNG */}
           {adminView === 'settings' && !isCashier && <ShopSettings />}

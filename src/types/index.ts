@@ -269,6 +269,7 @@ export interface StaffAccount {
   role: AdminRole;
   phone?: string;
   shift: string;
+  hourlyRate?: number; // Mức lương theo giờ (VNĐ/giờ, VD: 28000)
   isActive: boolean;
   pinCode: string;
   createdAt: string;
@@ -281,4 +282,59 @@ export interface AdminUserData {
   role: AdminRole;
   roleTitle: string;
   shift?: string;
+  hourlyRate?: number;
+}
+
+// 10. Phân Ca Làm Việc Linh Hoạt & Chấm Công Tính Lương (Flexible Shift Scheduling & Timesheet)
+export type WorkShiftStatus =
+  | 'scheduled'     // Đã xếp ca dự kiến
+  | 'in_progress'   // Đang làm việc trong ca (đã check-in)
+  | 'completed'     // Đã hoàn tất ca làm việc (đã chốt số giờ thực tế)
+  | 'leave_excused' // Nghỉ có phép / xin nghỉ đột xuất có lý do
+  | 'leave_unexcused' // Nghỉ không phép / vắng mặt
+  | 'swapped';      // Đã đổi ca cho nhân viên khác
+
+export interface WorkShift {
+  id: string;
+  shiftCode: string;          // Mã ca làm (VD: #WS-0325-01)
+  staffId: string;
+  staffName: string;
+  staffRole: AdminRole;
+  date: string;               // YYYY-MM-DD
+  shiftTitle: string;         // 'Ca Sáng (06:30 - 14:30)', 'Ca Chiều', 'Part-time 4h'...
+  
+  // Giờ dự kiến
+  scheduledStartTime: string; // '06:30'
+  scheduledEndTime: string;   // '14:30'
+  scheduledHours: number;     // 8.0
+  
+  // Giờ thực tế đi làm (Chấm công thực tế)
+  actualStartTime?: string;   // '06:35'
+  actualEndTime?: string;     // '14:30'
+  actualHours?: number;       // 8.0 (hoặc 8.5 nếu OT)
+  
+  status: WorkShiftStatus;
+  notes?: string;             // Ghi chú phân ca hoặc phân công nhiệm vụ
+  actualNotes?: string;       // Ghi chú chấm công thực tế (VD: "Xin về sớm 30p", "OT hỗ trợ làm bánh")
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface MonthlyPayrollSummary {
+  staffId: string;
+  staffName: string;
+  month: string;              // 'YYYY-MM'
+  totalScheduledShifts: number;
+  totalCompletedShifts: number;
+  totalLeaveShifts: number;
+  totalScheduledHours: number;
+  totalActualHours: number;
+  hourlyRate: number;         // Lương theo giờ (VD: 28.000đ/giờ)
+  baseSalary: number;         // totalActualHours * hourlyRate
+  allowance: number;          // Thưởng / phụ cấp chuyên cần, trách nhiệm
+  deduction: number;          // Giảm trừ / phạt đi trễ
+  finalSalary: number;        // baseSalary + allowance - deduction
+  isFinalized: boolean;       // Đã chốt công cuối tháng hay chưa
+  finalizedAt?: string;
+  finalizedBy?: string;
 }
