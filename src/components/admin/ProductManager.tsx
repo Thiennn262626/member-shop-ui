@@ -17,7 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { mockDb, OPTION_PRESETS } from '../../services/mockDb';
-import type { ItemOptionGroup, Product } from '../../types';
+import type { AdminRole, ItemOptionGroup, Product } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
 // Kho ảnh mẫu F&B chất lượng cao của tiệm bánh & đồ uống
@@ -89,7 +89,12 @@ const PRODUCT_TAGS: NonNullable<Product['tag']>[] = [
   'Giảm Giá ⚡',
 ];
 
-export const ProductManager: React.FC = () => {
+interface ProductManagerProps {
+  userRole?: AdminRole;
+}
+
+export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owner' }) => {
+  const isCashier = userRole === 'cashier';
   const [products, setProducts] = useState<Product[]>(() => mockDb.getProducts());
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('Tất cả');
@@ -153,6 +158,7 @@ export const ProductManager: React.FC = () => {
 
   // Mở modal Thêm mới
   const handleOpenAddModal = () => {
+    if (isCashier) return;
     setEditingProduct(null);
     setFormName('');
     setFormCategory('Bánh Nướng Nóng');
@@ -170,6 +176,7 @@ export const ProductManager: React.FC = () => {
 
   // Mở modal Chỉnh sửa
   const handleOpenEditModal = (p: Product) => {
+    if (isCashier) return;
     setEditingProduct(p);
     setFormName(p.name);
     setFormCategory(p.category);
@@ -253,6 +260,7 @@ export const ProductManager: React.FC = () => {
 
   // Xóa sản phẩm
   const handleDeleteProduct = (p: Product) => {
+    if (isCashier) return;
     if (window.confirm(`Bạn có chắc chắn muốn xóa món "${p.name}" khỏi thực đơn không?`)) {
       mockDb.deleteProduct(p.id);
       setProducts(mockDb.getProducts());
@@ -342,14 +350,21 @@ export const ProductManager: React.FC = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenAddModal}
-            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/25 active:scale-95 transition-all cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm Món Mới</span>
-          </button>
+          {isCashier ? (
+            <div className="px-3.5 py-2 bg-stone-100 border border-stone-200 text-stone-600 rounded-2xl text-xs font-semibold flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span>Chế độ Thu Ngân (Chỉ bật/tắt còn món)</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleOpenAddModal}
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shadow-md shadow-amber-600/25 active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm Món Mới</span>
+            </button>
+          )}
         </div>
 
         {/* Filter Row */}
@@ -415,7 +430,7 @@ export const ProductManager: React.FC = () => {
                   <th className="p-3.5">Giá Bán</th>
                   <th className="p-3.5">Tùy Chọn (Size / Topping)</th>
                   <th className="p-3.5 text-center">Trạng Thái (Còn / Hết)</th>
-                  <th className="p-3.5 pr-5 text-right">Thao Tác</th>
+                  <th className="p-3.5 pr-5 text-right">{isCashier ? 'Quyền Hạn' : 'Thao Tác'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -514,25 +529,29 @@ export const ProductManager: React.FC = () => {
 
                       {/* Action Buttons */}
                       <td className="p-3.5 pr-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(p)}
-                            className="p-1.5 rounded-xl bg-stone-100 hover:bg-amber-100 text-stone-700 hover:text-amber-900 border border-stone-200 transition-colors cursor-pointer"
-                            title="Chỉnh sửa món"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
+                        {!isCashier ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(p)}
+                              className="p-1.5 rounded-xl bg-stone-100 hover:bg-amber-100 text-stone-700 hover:text-amber-900 border border-stone-200 transition-colors cursor-pointer"
+                              title="Chỉnh sửa món"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteProduct(p)}
-                            className="p-1.5 rounded-xl bg-stone-100 hover:bg-rose-100 text-stone-400 hover:text-rose-700 border border-stone-200 transition-colors cursor-pointer"
-                            title="Xóa khỏi thực đơn"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteProduct(p)}
+                              className="p-1.5 rounded-xl bg-stone-100 hover:bg-rose-100 text-stone-400 hover:text-rose-700 border border-stone-200 transition-colors cursor-pointer"
+                              title="Xóa khỏi thực đơn"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-stone-400 font-medium italic">Chỉ xem</span>
+                        )}
                       </td>
                     </tr>
                   );

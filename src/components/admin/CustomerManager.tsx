@@ -10,10 +10,15 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { mockDb, TIER_CONFIG } from '../../services/mockDb';
-import type { Customer, MemberTier, PointTransaction } from '../../types';
+import type { AdminRole, Customer, MemberTier, PointTransaction } from '../../types';
 import { formatCurrency, formatDate, formatPhone } from '../../utils/format';
 
-export const CustomerManager: React.FC = () => {
+interface CustomerManagerProps {
+  userRole?: AdminRole;
+}
+
+export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'owner' }) => {
+  const isCashier = userRole === 'cashier';
   const [customers, setCustomers] = useState<Customer[]>(() => mockDb.getCustomers());
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState<'ALL' | MemberTier>('ALL');
@@ -76,6 +81,7 @@ export const CustomerManager: React.FC = () => {
 
   // Mở modal điều chỉnh điểm
   const handleOpenAdjust = (c: Customer) => {
+    if (isCashier) return;
     setSelectedCustomerForAdjust(c);
     setPointsDeltaInput(50);
     setAdjustNoteInput('Thưởng điểm tri ân khách hàng thân thiết');
@@ -255,13 +261,15 @@ export const CustomerManager: React.FC = () => {
                             Sổ Cái Điểm
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenAdjust(c)}
-                            className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
-                          >
-                            +/- Điểm
-                          </button>
+                          {!isCashier && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAdjust(c)}
+                              className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                            >
+                              +/- Điểm
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

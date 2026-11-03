@@ -3,12 +3,7 @@ import { CartProvider } from './context/CartContext';
 import { LandingPage } from './pages/LandingPage';
 import { AdminPage } from './pages/AdminPage';
 import { AdminLoginModal } from './components/admin/AdminLoginModal';
-
-interface AdminUserData {
-  username: string;
-  role: string;
-  name: string;
-}
+import type { AdminUserData } from './types';
 
 export function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'admin'>('landing');

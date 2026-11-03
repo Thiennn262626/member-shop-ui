@@ -162,3 +162,27 @@ export interface ShopConfig {
   spendToPointRatio: number;
   bank: BankConfig;
 }
+
+// 8. Phân quyền Người Bán & Tài Khoản Thu Ngân
+export type AdminRole = 'owner' | 'cashier';
+
+export interface StaffAccount {
+  id: string;
+  username: string;
+  name: string;
+  role: AdminRole;
+  phone?: string;
+  shift: string;
+  isActive: boolean;
+  pinCode: string;
+  createdAt: string;
+}
+
+export interface AdminUserData {
+  id: string;
+  username: string;
+  name: string;
+  role: AdminRole;
+  roleTitle: string;
+  shift?: string;
+}

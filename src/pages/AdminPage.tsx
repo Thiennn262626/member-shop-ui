@@ -19,6 +19,7 @@ import {
   UtensilsCrossed,
   BarChart3,
   Users,
+  UserCheck,
   Settings,
   LogOut,
   Menu,
@@ -27,32 +28,43 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { mockDb, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../services/mockDb';
-import type { Customer, Order, OrderStatus } from '../types';
+import type { AdminUserData, Customer, Order, OrderStatus } from '../types';
 import { formatCurrency, formatDate, formatPhone } from '../utils/format';
 import { PosOrderCreator } from '../components/admin/PosOrderCreator';
 import { ProductManager } from '../components/admin/ProductManager';
 import { AdminAnalytics } from '../components/admin/AdminAnalytics';
 import { CustomerManager } from '../components/admin/CustomerManager';
+import { StaffManager } from '../components/admin/StaffManager';
 import { ShopSettings } from '../components/admin/ShopSettings';
 
 interface AdminPageProps {
   onLogout: () => void;
-  adminUser?: { username: string; role: string; name: string };
+  adminUser?: AdminUserData;
 }
 
-type AdminViewType = 'analytics' | 'pos' | 'orders' | 'products' | 'customers' | 'settings';
+type AdminViewType = 'analytics' | 'pos' | 'orders' | 'products' | 'customers' | 'staff' | 'settings';
 
 export const AdminPage: React.FC<AdminPageProps> = ({
   onLogout,
   adminUser = {
+    id: 'staff-admin',
     username: 'admin',
-    role: 'Chủ Cửa Hàng (Admin)',
     name: 'Nguyễn Quản Lý',
+    role: 'owner',
+    roleTitle: 'Chủ Cửa Hàng (Admin)',
   },
 }) => {
-  const [adminView, setAdminView] = useState<AdminViewType>('pos');
+  const isCashier = adminUser.role === 'cashier';
+  const [adminView, setAdminView] = useState<AdminViewType>(() => (isCashier ? 'pos' : 'analytics'));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Bảo vệ route/tab: nếu thu ngân cố tình truy cập tab của chủ tiệm thì redirect về POS
+  useEffect(() => {
+    if (isCashier && ['analytics', 'staff', 'settings'].includes(adminView)) {
+      setAdminView('pos');
+    }
+  }, [isCashier, adminView]);
 
   // Quản lý đơn hàng state
   const [orderSearchCode, setOrderSearchCode] = useState('');
@@ -278,19 +290,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const shippingCount = orders.filter((o) => o.status === 'shipping').length;
   const completedCount = orders.filter((o) => o.status === 'completed').length;
 
-  // Sidebar Menu Items
-  const menuItems = [
+  // Sidebar Menu Items theo phân quyền (Chủ tiệm vs Thu ngân)
+  const allMenuItems = [
     {
       id: 'analytics' as AdminViewType,
       label: 'Báo Cáo & Doanh Thu',
       icon: BarChart3,
       badge: null,
+      badgeColor: undefined,
+      ownerOnly: true,
     },
     {
       id: 'pos' as AdminViewType,
       label: 'Quầy Thu Ngân (POS)',
       icon: PlusCircle,
       badge: 'Hot',
+      badgeColor: 'bg-amber-400 text-stone-950 font-black',
+      ownerOnly: false,
     },
     {
       id: 'orders' as AdminViewType,
@@ -298,26 +314,43 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       icon: ListOrdered,
       badge: pendingCount > 0 ? `${pendingCount} mới` : null,
       badgeColor: 'bg-rose-500 text-white animate-pulse',
+      ownerOnly: false,
     },
     {
       id: 'products' as AdminViewType,
-      label: 'Thực Đơn Sản Phẩm',
+      label: isCashier ? 'Xem Thực Đơn (Bật/Tắt)' : 'Thực Đơn Sản Phẩm',
       icon: UtensilsCrossed,
       badge: null,
+      badgeColor: undefined,
+      ownerOnly: false,
     },
     {
       id: 'customers' as AdminViewType,
-      label: 'Quản Lý Hội Viên CRM',
+      label: isCashier ? 'Tra Cứu Khách Hàng' : 'Quản Lý Hội Viên CRM',
       icon: Users,
       badge: null,
+      badgeColor: undefined,
+      ownerOnly: false,
+    },
+    {
+      id: 'staff' as AdminViewType,
+      label: 'Tài Khoản & Ca Trực',
+      icon: UserCheck,
+      badge: 'Chủ Tiệm',
+      badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300',
+      ownerOnly: true,
     },
     {
       id: 'settings' as AdminViewType,
       label: 'Cài Đặt Cửa Hàng',
       icon: Settings,
       badge: null,
+      badgeColor: undefined,
+      ownerOnly: true,
     },
   ];
+
+  const menuItems = allMenuItems.filter((item) => !isCashier || !item.ownerOnly);
 
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col md:flex-row text-stone-900 font-sans">
@@ -355,14 +388,31 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
           {/* User Profile Card */}
           <div className="p-4 mx-3 my-3 bg-stone-800/80 rounded-2xl border border-stone-700/60 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+                isCashier ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+              }`}
+            >
               <User className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-bold text-xs text-white truncate">{adminUser.name}</div>
-              <span className="text-[10px] text-amber-300/80 block truncate font-medium">
-                {adminUser.role}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
+                    isCashier
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                      : 'bg-amber-950 text-amber-300 border border-amber-700'
+                  }`}
+                >
+                  {isCashier ? 'Thu Ngân' : 'Chủ Tiệm'}
+                </span>
+                {adminUser.shift && (
+                  <span className="text-[10px] text-stone-400 truncate">
+                    &bull; {adminUser.shift.split('(')[0].trim()}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -481,7 +531,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         {/* BODY VIEWS THEO TỪNG TAB */}
         <div className="flex-1 flex flex-col">
           {/* TAB 1: BÁO CÁO & DOANH THU */}
-          {adminView === 'analytics' && <AdminAnalytics />}
+          {adminView === 'analytics' && !isCashier && <AdminAnalytics />}
 
           {/* TAB 2: QUẦY THU NGÂN POS */}
           {adminView === 'pos' && (
@@ -1115,13 +1165,16 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           )}
 
           {/* TAB 4: QUẢN LÝ THỰC ĐƠN & SẢN PHẨM */}
-          {adminView === 'products' && <ProductManager />}
+          {adminView === 'products' && <ProductManager userRole={adminUser.role} />}
 
           {/* TAB 5: QUẢN LÝ KHÁCH HÀNG CRM */}
-          {adminView === 'customers' && <CustomerManager />}
+          {adminView === 'customers' && <CustomerManager userRole={adminUser.role} />}
 
-          {/* TAB 6: CÀI ĐẶT CỬA HÀNG */}
-          {adminView === 'settings' && <ShopSettings />}
+          {/* TAB 6: QUẢN LÝ TÀI KHOẢN THU NGÂN & NHÂN VIÊN */}
+          {adminView === 'staff' && !isCashier && <StaffManager />}
+
+          {/* TAB 7: CÀI ĐẶT CỬA HÀNG */}
+          {adminView === 'settings' && !isCashier && <ShopSettings />}
         </div>
       </div>
     </div>

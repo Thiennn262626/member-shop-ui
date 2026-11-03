@@ -9,12 +9,13 @@ import {
   X,
   KeyRound,
 } from 'lucide-react';
-import { SHOP_CONFIG } from '../../services/mockDb';
+import { mockDb, SHOP_CONFIG } from '../../services/mockDb';
+import type { AdminUserData } from '../../types';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (user: { username: string; role: string; name: string }) => void;
+  onLoginSuccess: (user: AdminUserData) => void;
 }
 
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
@@ -35,51 +36,73 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      // Xác thực đơn giản cho môi trường quản trị F&B
-      const trimmedUser = username.trim().toLowerCase();
-      if (
-        (trimmedUser === 'admin' && password === '123456') ||
-        (trimmedUser === 'thungan' && password === '123456') ||
-        (trimmedUser === 'manager' && password === '123456')
-      ) {
-        const userData = {
-          username: trimmedUser,
-          role: trimmedUser === 'admin' ? 'Chủ Cửa Hàng (Admin)' : 'Thu Ngân Ca Trực',
-          name: trimmedUser === 'admin' ? 'Nguyễn Quản Lý' : 'Trần Thu Ngân',
-        };
-
-        // Lưu phiên đăng nhập
-        sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(userData));
+      try {
+        const staff = mockDb.authenticateStaff(username, password);
+        if (staff) {
+          const userData: AdminUserData = {
+            id: staff.id,
+            username: staff.username,
+            name: staff.name,
+            role: staff.role,
+            roleTitle: staff.role === 'owner' ? 'Chủ Tiệm (Toàn Quyền)' : 'Thu Ngân Ca Trực',
+            shift: staff.shift,
+          };
+          sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(userData));
+          setIsLoading(false);
+          onLoginSuccess(userData);
+        } else {
+          setIsLoading(false);
+          setErrorMsg('Tên đăng nhập hoặc mật khẩu/PIN không đúng. Vui lòng thử lại!');
+        }
+      } catch (err: unknown) {
         setIsLoading(false);
-        onLoginSuccess(userData);
-      } else {
-        setIsLoading(false);
-        setErrorMsg('Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại!');
+        const msg = err instanceof Error ? err.message : 'Lỗi xác thực';
+        setErrorMsg(msg);
       }
-    }, 400);
+    }, 300);
   };
 
   const handleQuickLogin = (userType: 'admin' | 'thungan') => {
-    if (userType === 'admin') {
-      setUsername('admin');
-      setPassword('123456');
-    } else {
-      setUsername('thungan');
-      setPassword('123456');
-    }
+    const targetUser = userType === 'admin' ? 'admin' : 'thungan';
+    setUsername(targetUser);
+    setPassword('123456');
     setErrorMsg(null);
     setIsLoading(true);
 
     setTimeout(() => {
-      const userData = {
-        username: userType,
-        role: userType === 'admin' ? 'Chủ Cửa Hàng (Admin)' : 'Thu Ngân Ca Trực',
-        name: userType === 'admin' ? 'Nguyễn Quản Lý' : 'Trần Thu Ngân',
-      };
-      sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(userData));
-      setIsLoading(false);
-      onLoginSuccess(userData);
-    }, 300);
+      try {
+        const staff = mockDb.authenticateStaff(targetUser, '123456');
+        if (staff) {
+          const userData: AdminUserData = {
+            id: staff.id,
+            username: staff.username,
+            name: staff.name,
+            role: staff.role,
+            roleTitle: staff.role === 'owner' ? 'Chủ Tiệm (Toàn Quyền)' : 'Thu Ngân Ca Trực',
+            shift: staff.shift,
+          };
+          sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(userData));
+          setIsLoading(false);
+          onLoginSuccess(userData);
+        } else {
+          const fallbackData: AdminUserData = {
+            id: targetUser === 'admin' ? 'staff-admin' : 'staff-thungan',
+            username: targetUser,
+            name: targetUser === 'admin' ? 'Nguyễn Quản Lý (Chủ Tiệm)' : 'Trần Thu Ngân',
+            role: targetUser === 'admin' ? 'owner' : 'cashier',
+            roleTitle: targetUser === 'admin' ? 'Chủ Tiệm (Toàn Quyền)' : 'Thu Ngân Ca Trực',
+            shift: targetUser === 'admin' ? 'Toàn Thời Gian' : 'Ca Sáng (06:30 - 14:30)',
+          };
+          sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(fallbackData));
+          setIsLoading(false);
+          onLoginSuccess(fallbackData);
+        }
+      } catch (err: unknown) {
+        setIsLoading(false);
+        const msg = err instanceof Error ? err.message : 'Lỗi xác thực';
+        setErrorMsg(msg);
+      }
+    }, 250);
   };
 
   return (

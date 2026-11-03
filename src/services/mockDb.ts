@@ -9,6 +9,7 @@ import type {
   PointTransaction,
   Product,
   ShopConfig,
+  StaffAccount,
   TierBenefit,
 } from '../types';
 
@@ -608,11 +609,48 @@ const SEED_TRANSACTIONS: PointTransaction[] = [
   },
 ];
 
+const SEED_STAFF_ACCOUNTS: StaffAccount[] = [
+  {
+    id: 'staff-1',
+    username: 'admin',
+    name: 'Nguyễn Văn Minh (Chủ Tiệm)',
+    role: 'owner',
+    phone: '0901234567',
+    shift: 'Toàn Thời Gian (Quản Trị)',
+    isActive: true,
+    pinCode: '123456',
+    createdAt: '2026-01-01T08:00:00.000Z',
+  },
+  {
+    id: 'staff-2',
+    username: 'thungan',
+    name: 'Trần Thị Thu Ngân (Ca Sáng)',
+    role: 'cashier',
+    phone: '0988111222',
+    shift: 'Ca Sáng (06:30 - 14:30)',
+    isActive: true,
+    pinCode: '123456',
+    createdAt: '2026-01-15T08:00:00.000Z',
+  },
+  {
+    id: 'staff-3',
+    username: 'thungan2',
+    name: 'Lê Hoàng Yến (Ca Chiều)',
+    role: 'cashier',
+    phone: '0912345678',
+    shift: 'Ca Chiều (14:30 - 22:30)',
+    isActive: true,
+    pinCode: '123456',
+    createdAt: '2026-02-01T08:00:00.000Z',
+  },
+];
+
 const STORAGE_KEYS = {
   PRODUCTS: 'bake_sip_products_v5',
   CUSTOMERS: 'bake_sip_customers_v5',
   ORDERS: 'bake_sip_orders_v5',
   TRANSACTIONS: 'bake_sip_transactions_v5',
+  STAFF: 'bake_sip_staff_v5',
   REALTIME_PING: 'bake_sip_realtime_ping_v5',
 };
 
@@ -1142,6 +1180,95 @@ class MockDatabase {
 
     window.dispatchEvent(new CustomEvent('bake_sip_customer_updated', { detail: customer }));
     return customer;
+  }
+
+  // --- STAFF ACCOUNTS MANAGEMENT (QUẢN LÝ TÀI KHOẢN THU NGÂN) ---
+  getStaffAccounts(): StaffAccount[] {
+    const list = this.load<StaffAccount[]>(STORAGE_KEYS.STAFF, SEED_STAFF_ACCOUNTS);
+    if (!localStorage.getItem(STORAGE_KEYS.STAFF)) {
+      this.save(STORAGE_KEYS.STAFF, SEED_STAFF_ACCOUNTS);
+    }
+    return list;
+  }
+
+  addStaffAccount(payload: Omit<StaffAccount, 'id' | 'createdAt'>): StaffAccount {
+    const staffList = this.getStaffAccounts();
+    const existing = staffList.find((s) => s.username.toLowerCase() === payload.username.toLowerCase());
+    if (existing) {
+      throw new Error(`Tên đăng nhập "${payload.username}" đã tồn tại trên hệ thống.`);
+    }
+
+    const newStaff: StaffAccount = {
+      ...payload,
+      id: `staff-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    staffList.push(newStaff);
+    this.save(STORAGE_KEYS.STAFF, staffList);
+    window.dispatchEvent(new CustomEvent('bake_sip_staff_updated'));
+    return newStaff;
+  }
+
+  updateStaffAccount(id: string, updates: Partial<StaffAccount>): StaffAccount {
+    const staffList = this.getStaffAccounts();
+    const index = staffList.findIndex((s) => s.id === id);
+    if (index === -1) {
+      throw new Error('Không tìm thấy tài khoản nhân viên cần sửa.');
+    }
+
+    if (updates.username) {
+      const duplicate = staffList.find(
+        (s) => s.id !== id && s.username.toLowerCase() === updates.username!.toLowerCase()
+      );
+      if (duplicate) {
+        throw new Error(`Tên đăng nhập "${updates.username}" đã bị trùng.`);
+      }
+    }
+
+    staffList[index] = { ...staffList[index], ...updates };
+    this.save(STORAGE_KEYS.STAFF, staffList);
+    window.dispatchEvent(new CustomEvent('bake_sip_staff_updated'));
+    return staffList[index];
+  }
+
+  toggleStaffStatus(id: string): StaffAccount {
+    const staffList = this.getStaffAccounts();
+    const index = staffList.findIndex((s) => s.id === id);
+    if (index === -1) throw new Error('Không tìm thấy tài khoản');
+    if (staffList[index].username === 'admin') {
+      throw new Error('Không thể khóa tài khoản Chủ Tiệm (Admin chính).');
+    }
+    staffList[index].isActive = !staffList[index].isActive;
+    this.save(STORAGE_KEYS.STAFF, staffList);
+    window.dispatchEvent(new CustomEvent('bake_sip_staff_updated'));
+    return staffList[index];
+  }
+
+  deleteStaffAccount(id: string): boolean {
+    const staffList = this.getStaffAccounts();
+    const target = staffList.find((s) => s.id === id);
+    if (!target) return false;
+    if (target.username === 'admin') {
+      throw new Error('Không thể xóa tài khoản Chủ Tiệm (Admin chính).');
+    }
+    const filtered = staffList.filter((s) => s.id !== id);
+    this.save(STORAGE_KEYS.STAFF, filtered);
+    window.dispatchEvent(new CustomEvent('bake_sip_staff_updated'));
+    return true;
+  }
+
+  authenticateStaff(username: string, pinCode: string): StaffAccount | null {
+    const staffList = this.getStaffAccounts();
+    const cleanUser = username.trim().toLowerCase();
+    const found = staffList.find(
+      (s) => s.username.toLowerCase() === cleanUser && s.pinCode === pinCode.trim()
+    );
+    if (!found) return null;
+    if (!found.isActive) {
+      throw new Error('Tài khoản này hiện đang bị tạm khóa. Vui lòng liên hệ Chủ tiệm!');
+    }
+    return found;
   }
 }
 
