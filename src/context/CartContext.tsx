@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { SHOP_CONFIG } from '../services/mockDb';
+import { SHOP_CONFIG } from '../constants/shopConstants';
 import type { Product, SelectedOptionChoice } from '../types';
 import { formatCurrency } from '../utils/format';
 

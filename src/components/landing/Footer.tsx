@@ -1,6 +1,6 @@
 import React from 'react';
 import { Phone, MapPin, MessageSquare, ShieldCheck, Clock } from 'lucide-react';
-import { SHOP_CONFIG } from '../../services/mockDb';
+import { SHOP_CONFIG } from '../../constants/shopConstants';
 
 export const Footer: React.FC = () => {
   return (

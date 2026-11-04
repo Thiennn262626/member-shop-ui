@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Copy, Check, Send, Clock, Sparkles } from 'lucide-react';
-import { SHOP_CONFIG } from '../../services/mockDb';
+import { SHOP_CONFIG } from '../../constants/shopConstants';
 import type { Order } from '../../types';
 import { formatCurrency } from '../../utils/format';
 

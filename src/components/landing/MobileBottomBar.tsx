@@ -1,7 +1,7 @@
 import React from 'react';
 import { UtensilsCrossed, CreditCard, ShoppingBag, MessageCircle, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { SHOP_CONFIG } from '../../services/mockDb';
+import { SHOP_CONFIG } from '../../constants/shopConstants';
 import { formatCurrency } from '../../utils/format';
 
 interface MobileBottomBarProps {

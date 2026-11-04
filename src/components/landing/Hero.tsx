@@ -14,7 +14,7 @@ import {
   Coffee,
   Check,
 } from 'lucide-react';
-import { SHOP_CONFIG } from '../../services/mockDb';
+import { SHOP_CONFIG } from '../../constants/shopConstants';
 
 interface HeroProps {
   onOpenLookup: () => void;
