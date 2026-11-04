@@ -20,7 +20,9 @@
   /* Headings with soft, elegant Lora serif with 100% Vietnamese support */
   h1, h2, h3, .font-serif {
     font-family: var(--font-serif);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 

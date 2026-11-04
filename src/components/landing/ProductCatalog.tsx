@@ -96,13 +96,13 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
           <div>
             <div className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-800 bg-amber-100/80 px-2.5 py-1 rounded-full mb-2">
               <Sparkles className="w-3 h-3 text-amber-700" />
-              Menu Bánh Tráng & Đồ Ăn Vặt
+              Nguyên Liệu Tươi Mới &bull; Trộn Tay Chuẩn Vị
             </div>
-            <h2 className="text-base sm:text-3xl font-serif font-extrabold text-stone-900 tracking-tight">
-              Thực Đơn Ăn Vặt Đồng Giá 15k - 25k
+            <h2 className="text-base sm:text-3xl font-serif font-bold text-stone-900 tracking-tight leading-tight">
+              Thực Đơn Ăn Vặt "Ghiền Ngay Miếng Đầu"
             </h2>
-            <p className="hidden sm:block text-xs sm:text-sm text-stone-600 mt-1">
-              Tùy chọn độ cay, sốt bơ, topping thêm và ghi chú khẩu vị trước khi chốt đơn Zalo
+            <p className="hidden sm:block text-xs sm:text-sm text-stone-600 mt-1 leading-relaxed">
+              Bánh tráng phơi sương dẻo mịn, ngập tràn topping béo bùi &bull; Tùy chỉnh độ cay, sốt me bơ và đổi món miễn phí bằng điểm thưởng!
             </p>
           </div>
 

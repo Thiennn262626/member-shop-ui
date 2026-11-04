@@ -36,30 +36,29 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
       <div className="relative max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-12 items-center">
           {/* Left Column: Brand Story & CTA */}
-          <div className="lg:col-span-7 space-y-2.5 sm:space-y-6 text-center lg:text-left">
+          <div className="lg:col-span-7 space-y-3 sm:space-y-6 text-center lg:text-left">
             {/* Social Proof Pill (Chỉ hiện trên desktop/tablet để tiết kiệm chiều dọc điện thoại) */}
-            <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-amber-200 shadow-xs text-xs font-semibold text-amber-900 mx-auto lg:mx-0">
+            <div className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 border border-amber-300 shadow-xs text-xs font-semibold text-amber-950 mx-auto lg:mx-0">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Tiệm đang mở cửa &bull; Bánh tráng phơi sương & ăn vặt 15k - 25k</span>
+              <span>🌶️ Bánh tráng phơi sương mới trộn &bull; Giá học sinh sinh viên chỉ 15k &ndash; 25k</span>
             </div>
 
-            {/* Main Headline (Font size tinh gọn, chuẩn app hiện đại trên mobile) */}
-            <h1 className="text-xl sm:text-5xl font-serif font-extrabold text-stone-900 tracking-tight leading-tight">
-              Ghiền Bánh Tráng, <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600">
-                Tích Điểm Giảm Đơn
+            {/* Main Headline (Font bold chuẩn Lora tiếng Việt, ngắt dòng nhịp điệu) */}
+            <h1 className="text-2xl sm:text-5xl lg:text-6xl font-serif font-bold text-stone-900 tracking-tight leading-[1.18]">
+              Đậm Vị Phơi Sương, <br className="hidden sm:inline" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600">
+                Cay Béo Xuýt Xoa
               </span>{' '}
-              Cực Đã!
+              &bull; Tích Điểm Liền Tay!
             </h1>
 
-            {/* Description (Rút gọn tối đa trên mobile để khách thấy thực đơn ngay) */}
-            <p className="hidden sm:block text-sm sm:text-base text-stone-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Bánh tráng phơi sương Tây Ninh dẻo mềm, ngập tràn khô bò trứng cút sốt bơ me cay béo cùng trà tắc khổng lồ mát lạnh. 
-              Giá học sinh chỉ từ <strong className="text-amber-800">15.000đ - 25.000đ</strong>. Mỗi <strong className="text-stone-900">{formatCurrency(shopConfig.spendToPointRatio || 10000)}</strong> hóa đơn = <strong className="text-amber-700">1 điểm thưởng</strong>, 
-              trừ tiền trực tiếp khi chốt đơn qua Zalo!
+            {/* Description (Ngắt dòng hợp lý, chống rớt chữ đơn lẻ) */}
+            <p className="hidden sm:block text-base sm:text-lg text-stone-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+              Bánh tráng dẻo mềm thấm đẫm sốt bơ me cay béo, ngập tràn khô bò trứng cút lòng đào cùng trà tắc khổng lồ mát lạnh. <br className="hidden md:inline" />
+              Tự động tích điểm theo SĐT &bull; Trừ thẳng tiền mặt vào hóa đơn khi chốt đơn Zalo!
             </p>
-            <p className="sm:hidden text-xs text-stone-600 leading-tight max-w-xs mx-auto">
-              Bánh tráng trộn 15k-25k &bull; Tích {formatCurrency(shopConfig.spendToPointRatio || 10000)} = 1 điểm trừ tiền mặt khi chốt đơn!
+            <p className="sm:hidden text-xs text-stone-600 leading-snug max-w-xs mx-auto">
+              Bánh tráng dẻo sốt bơ cay béo chỉ từ 15k &bull; Tích điểm tự động trừ tiền mặt qua Zalo!
             </p>
 
             {/* Action Buttons */}
@@ -79,7 +78,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                 title="Xem hướng dẫn quy trình đặt đơn"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                <span>Hướng Dẫn 💡</span>
+                <span>Cách Đặt Món 💡</span>
               </button>
 
               <button
@@ -95,7 +94,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
             <div className="hidden sm:flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-3 text-xs text-stone-500 font-medium">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>1 Điểm = {formatCurrency(shopConfig.pointToVndRatio || 500)} tiền mặt</span>
+                <span>Hoàn tiền tới 7.5% vào thẻ</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -103,7 +102,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Không cần tải app</span>
+                <span>Freeship đơn từ 60k cho hội viên</span>
               </div>
             </div>
           </div>
@@ -171,8 +170,8 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                   </div>
                   <div>
                     <div className="font-bold text-stone-900 text-xs">Tự động tích điểm theo SĐT</div>
-                    <p className="text-[11px] text-stone-600 mt-0.5">
-                      Tiệm chốt đơn và cộng điểm ngay. Bạn có thể mở web nhập SĐT để ngắm số điểm nhảy!
+                    <p className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
+                      Tiệm chốt đơn và tự cộng điểm. Không cần thẻ cứng hay tải app cồng kềnh.
                     </p>
                   </div>
                 </div>
@@ -182,9 +181,9 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                     3
                   </div>
                   <div>
-                    <div className="font-bold text-stone-900 text-xs">Trừ tiền hoặc đổi topping/bánh xịn</div>
-                    <p className="text-[11px] text-stone-600 mt-0.5">
-                      Lần tới mua chỉ cần bảo tiệm: "Trừ điểm giúp mình nha!", đơn hàng tự động giảm giá ngay.
+                    <div className="font-bold text-stone-900 text-xs">Trừ tiền mặt hoặc đổi món yêu thích</div>
+                    <p className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
+                      Khấu trừ thẳng vào hóa đơn (1 điểm = {formatCurrency(shopConfig.pointToVndRatio || 500)}) hoặc đổi bánh tráng, trà tắc miễn phí!
                     </p>
                   </div>
                 </div>

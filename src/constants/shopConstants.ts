@@ -9,7 +9,7 @@ import type {
 
 export const SHOP_CONFIG: ShopConfig = {
   shopName: 'Bánh Tráng Cậu Hai',
-  tagline: 'Bánh Tráng Trộn & Ăn Vặt Nha Trang • Giá Học Sinh 15k - 25k',
+  tagline: 'Bánh Tráng Phơi Sương Chuẩn Vị Tây Ninh • Cay Béo Xuýt Xoa • Càng Ăn Càng Cuốn',
   hotline: '0334395313',
   zaloPhone: '0334395313',
   address: '7C Đ. Tô Hiến Thành, Nha Trang, Khánh Hòa',

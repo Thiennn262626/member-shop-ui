@@ -30,7 +30,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenPolicy }) => {
               </div>
             </div>
             <p className="text-stone-400 max-w-sm leading-relaxed text-xs">
-              Tiệm bánh tráng trộn phơi sương Tây Ninh & đồ ăn vặt chuẩn vị. Tích lũy điểm thưởng tự động trên từng đơn hàng chốt nhanh qua Zalo.
+              Bánh tráng phơi sương dẻo mịn &bull; Muối tôm Tây Ninh cay nồng &bull; Trứng cút béo bùi. <br className="hidden sm:inline" />
+              Chốt đơn Zalo siêu tốc, tự động tích lũy điểm thưởng và nhận hoàn tiền tới 7.5% mỗi ngày!
             </p>
           </div>
 
