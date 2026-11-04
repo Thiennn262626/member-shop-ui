@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Lock,
   User,
@@ -7,8 +7,9 @@ import {
   ShieldCheck,
   AlertCircle,
   X,
-  KeyRound,
   Loader2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { storeService, SHOP_CONFIG } from '../../services/storeService';
 import type { AdminUserData } from '../../types';
@@ -17,69 +18,54 @@ interface AdminLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (user: AdminUserData) => void;
+  initialError?: string | null;
 }
 
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   isOpen,
   onClose,
   onLoginSuccess,
+  initialError = null,
 }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('123456');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(initialError);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialError) {
+      setErrorMsg(initialError);
+    }
+  }, [initialError]);
 
   if (!isOpen) return null;
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setErrorMsg(null);
-    setIsLoading(true);
-
-    try {
-      const userData = await storeService.authenticateStaff(username, password);
-      if (userData) {
-        setIsLoading(false);
-        onLoginSuccess(userData);
-      } else {
-        setIsLoading(false);
-        setErrorMsg('Tên đăng nhập hoặc mật khẩu/PIN không đúng. Vui lòng thử lại!');
-      }
-    } catch (err: unknown) {
-      setIsLoading(false);
-      const msg = err instanceof Error ? err.message : 'Lỗi xác thực';
-      setErrorMsg(msg);
+    const cleanUser = username.trim();
+    if (!cleanUser || !password) {
+      setErrorMsg('Vui lòng nhập đầy đủ tên đăng nhập và mã PIN / mật khẩu.');
+      return;
     }
-  };
 
-  const handleQuickLogin = async (userType: 'admin' | 'thungan') => {
-    const targetUser = userType === 'admin' ? 'admin' : 'thungan';
-    setUsername(targetUser);
-    setPassword('123456');
     setErrorMsg(null);
     setIsLoading(true);
 
     try {
-      const userData = await storeService.authenticateStaff(targetUser, '123456');
+      const userData = await storeService.authenticateStaff(cleanUser, password);
       if (userData) {
         setIsLoading(false);
+        setUsername('');
+        setPassword('');
         onLoginSuccess(userData);
       } else {
-        const fallbackData: AdminUserData = {
-          id: targetUser === 'admin' ? 'staff-admin' : 'staff-thungan',
-          username: targetUser,
-          name: targetUser === 'admin' ? 'Nguyễn Quản Lý (Chủ Tiệm)' : 'Trần Thu Ngân',
-          role: targetUser === 'admin' ? 'owner' : 'cashier',
-          roleTitle: targetUser === 'admin' ? 'Chủ Tiệm (Toàn Quyền)' : 'Thu Ngân Ca Trực',
-          shift: targetUser === 'admin' ? 'Toàn Thời Gian' : 'Ca Sáng (06:30 - 14:30)',
-        };
-        sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(fallbackData));
         setIsLoading(false);
-        onLoginSuccess(fallbackData);
+        setErrorMsg('Tên đăng nhập hoặc mã PIN không đúng. Vui lòng thử lại!');
       }
     } catch (err: unknown) {
       setIsLoading(false);
-      const msg = err instanceof Error ? err.message : 'Lỗi xác thực';
+      const msg = err instanceof Error ? err.message : 'Lỗi xác thực hệ thống';
       setErrorMsg(msg);
     }
   };
@@ -120,7 +106,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             {errorMsg && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>{errorMsg}</span>
+                <span className="leading-tight font-medium">{errorMsg}</span>
               </div>
             )}
 
@@ -134,6 +120,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="VD: admin hoặc thungan..."
+                autoComplete="username"
+                autoFocus
                 className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:border-amber-600 focus:bg-white transition-all font-mono"
                 required
               />
@@ -144,42 +132,32 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 <Lock className="w-3.5 h-3.5 text-stone-500" />
                 <span>Mật Khẩu / Mã PIN</span>
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu..."
-                className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 focus:outline-none focus:border-amber-600 focus:bg-white transition-all font-mono"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Nhập mã PIN hoặc mật khẩu..."
+                  autoComplete="current-password"
+                  className="w-full pl-3.5 pr-10 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 focus:outline-none focus:border-amber-600 focus:bg-white transition-all font-mono"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
-            {/* Quick Login 1-Click Buttons */}
-            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3 space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-bold text-amber-900">
-                <span className="flex items-center gap-1">
-                  <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                  Đăng nhập nhanh 1-Click (Demo):
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('admin')}
-                  className="py-1.5 px-2 bg-white hover:bg-amber-100 text-stone-800 border border-amber-300 rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-2xs text-center"
-                >
-                  👑 Quyền Admin (Chủ Tiệm)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('thungan')}
-                  className="py-1.5 px-2 bg-white hover:bg-amber-100 text-stone-800 border border-amber-300 rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-2xs text-center"
-                >
-                  🧾 Thu Ngân Ca Trực
-                </button>
-              </div>
+            {/* Security note */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-stone-50 border border-stone-200/80 rounded-xl text-[11px] text-stone-500">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Bảo vệ chống Brute-Force (tự động khóa tạm 15 phút nếu sai mã PIN 5 lần).</span>
             </div>
 
             {/* Login Button */}

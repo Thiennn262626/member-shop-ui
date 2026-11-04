@@ -335,6 +335,10 @@ class StoreService {
     return await apiStoreService.authenticateStaff(username, pinCode);
   }
 
+  async getMe(): Promise<AdminUserData | null> {
+    return await apiStoreService.getMe();
+  }
+
   async logout(): Promise<void> {
     await apiStoreService.logout();
   }

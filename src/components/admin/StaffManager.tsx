@@ -76,7 +76,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const [formRole, setFormRole] = useState<AdminRole>('cashier');
   const [formPhone, setFormPhone] = useState('');
   const [formHourlyRate, setFormHourlyRate] = useState<number>(28000);
-  const [formPinCode, setFormPinCode] = useState('123456');
+  const [formPinCode, setFormPinCode] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -319,7 +319,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setFormRole('cashier');
     setFormPhone('');
     setFormHourlyRate(28000);
-    setFormPinCode('123456');
+    setFormPinCode('');
     setFormIsActive(true);
     setFormError(null);
     setIsAccountModalOpen(true);
@@ -332,7 +332,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setFormRole(staff.role);
     setFormPhone(staff.phone || '');
     setFormHourlyRate(staff.hourlyRate || 28000);
-    setFormPinCode(staff.pinCode);
+    setFormPinCode('');
     setFormIsActive(staff.isActive);
     setFormError(null);
     setIsAccountModalOpen(true);
@@ -343,6 +343,9 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setFormError(null);
     if (!formUsername.trim()) return setFormError('Vui lòng nhập tên đăng nhập.');
     if (!formName.trim()) return setFormError('Vui lòng nhập họ tên.');
+    if (!editingAccount && (!formPinCode || formPinCode.trim().length < 4)) {
+      return setFormError('Vui lòng nhập mã PIN tối thiểu 4 ký tự/chữ số cho nhân viên mới.');
+    }
 
     try {
       if (editingAccount) {
@@ -1383,14 +1386,16 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-stone-700 mb-1">Mã PIN Đăng Nhập</label>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    Mã PIN Đăng Nhập {editingAccount && <span className="text-stone-400 font-normal text-xs">(Để trống nếu giữ nguyên)</span>}
+                  </label>
                   <input
-                    type="text"
+                    type="password"
                     value={formPinCode}
                     onChange={(e) => setFormPinCode(e.target.value)}
-                    placeholder="VD: 123456"
+                    placeholder={editingAccount ? 'Để trống nếu không đổi PIN' : 'Nhập mã PIN (VD: 6 chữ số)'}
                     className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-mono font-bold"
-                    required
+                    required={!editingAccount}
                   />
                 </div>
               </div>
