@@ -17,7 +17,7 @@ import {
   AlertCircle,
   Gift,
 } from 'lucide-react';
-import { mockDb, OPTION_PRESETS } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG, OPTION_PRESETS } from '../../services/storeService';
 import type { AdminRole, ItemOptionGroup, Product } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
@@ -96,7 +96,8 @@ interface ProductManagerProps {
 
 export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owner' }) => {
   const isCashier = userRole === 'cashier';
-  const [products, setProducts] = useState<Product[]>(() => mockDb.getProducts());
+  const [products, setProducts] = useState<Product[]>([]);
+  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('Tất cả');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -124,12 +125,37 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
 
   // Lắng nghe cập nhật sản phẩm Realtime
   useEffect(() => {
-    const handleProductUpdate = () => {
-      setProducts(mockDb.getProducts());
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        const [pList, cfg] = await Promise.all([
+          storeService.getProducts(),
+          storeService.getShopConfig(),
+        ]);
+        if (isMounted) {
+          if (pList) setProducts(pList);
+          if (cfg) setShopConfig(cfg);
+        }
+      } catch (err) {
+        console.error('Failed to load products/config:', err);
+      }
     };
+
+    loadData();
+
+    const handleProductUpdate = () => {
+      storeService.getProducts().then((p) => isMounted && setProducts(p));
+    };
+    const handleConfigUpdate = () => {
+      storeService.getShopConfig().then((cfg) => isMounted && setShopConfig(cfg));
+    };
+
     window.addEventListener('bake_sip_product_updated', handleProductUpdate);
+    window.addEventListener('bake_sip_config_updated', handleConfigUpdate);
     return () => {
+      isMounted = false;
       window.removeEventListener('bake_sip_product_updated', handleProductUpdate);
+      window.removeEventListener('bake_sip_config_updated', handleConfigUpdate);
     };
   }, []);
 
@@ -162,8 +188,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   // Mở modal Thêm mới
   const handleOpenAddModal = () => {
     if (isCashier) return;
-    const shopCfg = mockDb.getShopConfig();
-    const suggestedPoints = Math.max(1, Math.round(35000 / (shopCfg.pointToVndRatio || 1000)));
+    const suggestedPoints = Math.max(1, Math.round(35000 / (shopConfig.pointToVndRatio || 1000)));
 
     setEditingProduct(null);
     setFormName('');
@@ -185,8 +210,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   // Mở modal Chỉnh sửa
   const handleOpenEditModal = (p: Product) => {
     if (isCashier) return;
-    const shopCfg = mockDb.getShopConfig();
-    const suggestedPoints = Math.max(1, Math.round(p.price / (shopCfg.pointToVndRatio || 1000)));
+    const suggestedPoints = Math.max(1, Math.round(p.price / (shopConfig.pointToVndRatio || 1000)));
 
     setEditingProduct(p);
     setFormName(p.name);
@@ -206,7 +230,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   };
 
   // Lưu sản phẩm (Thêm mới hoặc Cập nhật)
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
@@ -243,14 +267,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
       };
 
       if (editingProduct) {
-        mockDb.updateProduct(editingProduct.id, payload);
+        await storeService.updateProduct(editingProduct.id, payload);
         showToast(`Đã cập nhật món "${payload.name}" thành công!`);
       } else {
-        mockDb.addProduct(payload);
+        await storeService.addProduct(payload);
         showToast(`Đã thêm món "${payload.name}" vào thực đơn!`);
       }
 
-      setProducts(mockDb.getProducts());
+      const pList = await storeService.getProducts();
+      setProducts(pList);
       setIsModalOpen(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi lưu sản phẩm';
@@ -259,10 +284,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   };
 
   // Bật/tắt trạng thái Còn hàng / Tạm hết món
-  const handleToggleStatus = (p: Product) => {
+  const handleToggleStatus = async (p: Product) => {
     try {
-      const updated = mockDb.toggleProductStatus(p.id);
-      setProducts(mockDb.getProducts());
+      const updated = await storeService.toggleProductStatus(p.id);
+      const pList = await storeService.getProducts();
+      setProducts(pList);
       showToast(
         updated.isActive
           ? `Món "${p.name}" đã được bật kinh doanh trở lại!`
@@ -274,12 +300,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   };
 
   // Xóa sản phẩm
-  const handleDeleteProduct = (p: Product) => {
+  const handleDeleteProduct = async (p: Product) => {
     if (isCashier) return;
     if (window.confirm(`Bạn có chắc chắn muốn xóa món "${p.name}" khỏi thực đơn không?`)) {
-      mockDb.deleteProduct(p.id);
-      setProducts(mockDb.getProducts());
-      showToast(`Đã xóa món "${p.name}" thành công.`);
+      try {
+        await storeService.deleteProduct(p.id);
+        const pList = await storeService.getProducts();
+        setProducts(pList);
+        showToast(`Đã xóa món "${p.name}" thành công.`);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -865,18 +896,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
                         <button
                           type="button"
                           onClick={() => {
-                            const cfg = mockDb.getShopConfig();
-                            const calc = Math.max(1, Math.round(formPrice / (cfg.pointToVndRatio || 1000)));
+                            const calc = Math.max(1, Math.round(formPrice / (shopConfig.pointToVndRatio || 1000)));
                             setFormPointsRequiredToRedeem(calc);
                           }}
                           className="px-2.5 py-1.5 bg-white hover:bg-amber-100 border border-amber-300 rounded-xl text-[11px] font-semibold text-amber-900 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
                         >
-                          ⚡ Gợi ý theo tỷ lệ tiệm ({Math.max(1, Math.round(formPrice / (mockDb.getShopConfig().pointToVndRatio || 1000)))} điểm)
+                          ⚡ Gợi ý theo tỷ lệ tiệm ({Math.max(1, Math.round(formPrice / (shopConfig.pointToVndRatio || 1000)))} điểm)
                         </button>
                       </div>
 
                       <p className="text-[11px] text-amber-900/80 leading-relaxed">
-                        💡 Tỷ lệ hiện tại của tiệm: <strong>1 điểm = {formatCurrency(mockDb.getShopConfig().pointToVndRatio || 1000)}</strong>.
+                        💡 Tỷ lệ hiện tại của tiệm: <strong>1 điểm = {formatCurrency(shopConfig.pointToVndRatio || 1000)}</strong>.
                         Khách tích lũy đủ {formPointsRequiredToRedeem} điểm có thể bấm đổi trực tiếp món này trong giỏ hàng hoặc tại quầy thu ngân.
                       </p>
                     </div>

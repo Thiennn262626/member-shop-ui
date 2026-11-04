@@ -149,6 +149,7 @@ class ApiStoreService {
       status?: Order['status'];
       paymentStatus?: Order['paymentStatus'];
       shipperInfo?: string;
+      discountPointsUsed?: number;
     }
   ): Promise<{ order: Order; customer: Customer }> {
     // Nếu orderCodeOrId là code dạng #BS-xxxx thì tìm ID trước

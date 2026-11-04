@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   TrendingUp,
   DollarSign,
@@ -12,15 +12,48 @@ import {
   Package,
   Calendar,
 } from 'lucide-react';
-import { mockDb, TIER_CONFIG } from '../../services/mockDb';
+import { storeService, TIER_CONFIG } from '../../services/storeService';
+import type { Customer, Order, Product } from '../../types';
 import { formatCurrency, formatPhone } from '../../utils/format';
 
 export const AdminAnalytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'today' | '7days' | 'month' | 'all'>('7days');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
-  const orders = useMemo(() => mockDb.getOrders(), []);
-  const customers = useMemo(() => mockDb.getCustomers(), []);
-  const products = useMemo(() => mockDb.getProducts(), []);
+  useEffect(() => {
+    let isMounted = true;
+    const loadAll = async () => {
+      try {
+        const [o, c, p] = await Promise.all([
+          storeService.getOrders(),
+          storeService.getCustomers(),
+          storeService.getProducts(),
+        ]);
+        if (isMounted) {
+          setOrders(o);
+          setCustomers(c);
+          setProducts(p);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadAll();
+    window.addEventListener('bake_sip_order_updated', loadAll);
+    window.addEventListener('bake_sip_order_created', loadAll);
+    window.addEventListener('bake_sip_customer_updated', loadAll);
+    window.addEventListener('bake_sip_product_updated', loadAll);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('bake_sip_order_updated', loadAll);
+      window.removeEventListener('bake_sip_order_created', loadAll);
+      window.removeEventListener('bake_sip_customer_updated', loadAll);
+      window.removeEventListener('bake_sip_product_updated', loadAll);
+    };
+  }, []);
 
   // Tính toán doanh thu & chỉ số
   const completedOrders = useMemo(() => {

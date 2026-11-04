@@ -8,7 +8,7 @@ import {
   Check,
   Send,
 } from 'lucide-react';
-import { mockDb } from '../../services/mockDb';
+import { storeService } from '../../services/storeService';
 import type { StaffAccount, WorkShift } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
@@ -30,14 +30,20 @@ export const CashierScheduleView: React.FC<CashierScheduleViewProps> = ({ curren
   }, []);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
 
-  const loadData = () => {
-    const list = mockDb.getWorkShifts(currentStaff.id);
-    setShifts(list);
+  const loadData = async () => {
+    try {
+      const list = await storeService.getWorkShifts(currentStaff.id);
+      setShifts(list);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
     loadData();
-    const handleUpdate = () => loadData();
+    const handleUpdate = () => {
+      loadData();
+    };
     window.addEventListener('bake_sip_work_shifts_updated', handleUpdate);
     return () => {
       window.removeEventListener('bake_sip_work_shifts_updated', handleUpdate);
@@ -63,22 +69,22 @@ export const CashierScheduleView: React.FC<CashierScheduleViewProps> = ({ curren
   const estimatedSalary = Math.round(totalActualHours * hourlyRate);
 
   // Điểm danh vào ca
-  const handleCheckIn = (shift: WorkShift) => {
+  const handleCheckIn = async (shift: WorkShift) => {
     try {
-      mockDb.checkInWorkShift(shift.id);
+      await storeService.checkInWorkShift(shift.id);
       showToast(`✓ Đã điểm danh vào ca "${shift.shiftTitle}" thành công!`);
-      loadData();
+      await loadData();
     } catch (e: any) {
       alert(e.message || 'Lỗi khi điểm danh');
     }
   };
 
   // Điểm danh tan ca (Check-out)
-  const handleCheckOut = (shift: WorkShift) => {
+  const handleCheckOut = async (shift: WorkShift) => {
     try {
-      mockDb.checkOutWorkShift(shift.id);
+      await storeService.checkOutWorkShift(shift.id);
       showToast(`✓ Đã xác nhận tan ca! Giờ làm việc thực tế đã được lưu vào bảng công.`);
-      loadData();
+      await loadData();
     } catch (e: any) {
       alert(e.message || 'Lỗi khi tan ca');
     }
@@ -91,7 +97,7 @@ export const CashierScheduleView: React.FC<CashierScheduleViewProps> = ({ curren
     setIsLeaveModalOpen(true);
   };
 
-  const handleSubmitLeave = (e: React.FormEvent) => {
+  const handleSubmitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShiftForLeave) return;
     if (!leaveReason.trim()) {
@@ -100,14 +106,14 @@ export const CashierScheduleView: React.FC<CashierScheduleViewProps> = ({ curren
     }
 
     try {
-      mockDb.recordWorkShiftLeave(
+      await storeService.recordWorkShiftLeave(
         selectedShiftForLeave.id,
         'leave_excused',
         `Xin nghỉ đột xuất: ${leaveReason.trim()}`
       );
       showToast(`Đã gửi thông báo xin nghỉ ca ngày ${selectedShiftForLeave.date} đến Chủ tiệm.`);
       setIsLeaveModalOpen(false);
-      loadData();
+      await loadData();
     } catch (e: any) {
       alert(e.message || 'Lỗi gửi yêu cầu');
     }

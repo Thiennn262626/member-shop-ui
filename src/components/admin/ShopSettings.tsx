@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Store,
   QrCode,
@@ -12,42 +12,41 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { mockDb, SHOP_CONFIG } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG } from '../../services/storeService';
 import type { ShippingTier } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
 export const ShopSettings: React.FC = () => {
-  const currentConfig = mockDb.getShopConfig() || SHOP_CONFIG;
-  const [shopName, setShopName] = useState(currentConfig.shopName);
-  const [tagline, setTagline] = useState(currentConfig.tagline);
-  const [hotline, setHotline] = useState(currentConfig.hotline);
-  const [zaloPhone, setZaloPhone] = useState(currentConfig.zaloPhone);
-  const [address, setAddress] = useState(currentConfig.address);
+  const [shopName, setShopName] = useState(SHOP_CONFIG.shopName);
+  const [tagline, setTagline] = useState(SHOP_CONFIG.tagline);
+  const [hotline, setHotline] = useState(SHOP_CONFIG.hotline);
+  const [zaloPhone, setZaloPhone] = useState(SHOP_CONFIG.zaloPhone);
+  const [address, setAddress] = useState(SHOP_CONFIG.address);
 
   // Bank Info
-  const [bankName, setBankName] = useState(currentConfig.bank.bankName);
-  const [accountNumber, setAccountNumber] = useState(currentConfig.bank.accountNumber);
-  const [accountHolder, setAccountHolder] = useState(currentConfig.bank.accountHolder);
+  const [bankName, setBankName] = useState(SHOP_CONFIG.bank.bankName);
+  const [accountNumber, setAccountNumber] = useState(SHOP_CONFIG.bank.accountNumber);
+  const [accountHolder, setAccountHolder] = useState(SHOP_CONFIG.bank.accountHolder);
 
   // Loyalty Program Config
   const [spendToPointRatio, setSpendToPointRatio] = useState<number>(
-    currentConfig.spendToPointRatio || 10000
+    SHOP_CONFIG.spendToPointRatio || 10000
   );
   const [pointToVndRatio, setPointToVndRatio] = useState<number>(
-    currentConfig.pointToVndRatio || 1000
+    SHOP_CONFIG.pointToVndRatio || 1000
   );
 
   // Delivery Config
   const [deliveryEnabled, setDeliveryEnabled] = useState(
-    currentConfig.delivery?.enabled !== undefined ? currentConfig.delivery.enabled : true
+    SHOP_CONFIG.delivery?.enabled !== undefined ? SHOP_CONFIG.delivery.enabled : true
   );
-  const [maxDistanceKm, setMaxDistanceKm] = useState(currentConfig.delivery?.maxDistanceKm || 10);
+  const [maxDistanceKm, setMaxDistanceKm] = useState(SHOP_CONFIG.delivery?.maxDistanceKm || 10);
   const [areaNote, setAreaNote] = useState(
-    currentConfig.delivery?.areaNote ||
+    SHOP_CONFIG.delivery?.areaNote ||
       'Chỉ nhận giao hàng trong bán kính 10km quanh khu vực Phú Nhuận & lân cận'
   );
   const [shippingTiers, setShippingTiers] = useState<ShippingTier[]>(
-    currentConfig.delivery?.tiers || [
+    SHOP_CONFIG.delivery?.tiers || [
       { id: 't1', minOrder: 0, maxOrder: 99999, fee: 20000, label: 'Đơn dưới 100k (Phí 20k)' },
       { id: 't2', minOrder: 100000, maxOrder: 199999, fee: 10000, label: 'Đơn 100k - 200k (Phí 10k)' },
       { id: 't3', minOrder: 200000, fee: 0, label: 'Đơn từ 200k trở lên (Freeship)' },
@@ -55,6 +54,33 @@ export const ShopSettings: React.FC = () => {
   );
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    storeService.getShopConfig().then((cfg) => {
+      if (isMounted && cfg) {
+        setShopName(cfg.shopName);
+        setTagline(cfg.tagline);
+        setHotline(cfg.hotline);
+        setZaloPhone(cfg.zaloPhone);
+        setAddress(cfg.address);
+        setBankName(cfg.bank.bankName);
+        setAccountNumber(cfg.bank.accountNumber);
+        setAccountHolder(cfg.bank.accountHolder);
+        setSpendToPointRatio(cfg.spendToPointRatio || 10000);
+        setPointToVndRatio(cfg.pointToVndRatio || 1000);
+        if (cfg.delivery) {
+          setDeliveryEnabled(cfg.delivery.enabled !== undefined ? cfg.delivery.enabled : true);
+          setMaxDistanceKm(cfg.delivery.maxDistanceKm || 10);
+          setAreaNote(cfg.delivery.areaNote || '');
+          if (cfg.delivery.tiers) setShippingTiers(cfg.delivery.tiers);
+        }
+      }
+    }).catch(console.error);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleAddTier = () => {
     const newTier: ShippingTier = {
@@ -76,31 +102,35 @@ export const ShopSettings: React.FC = () => {
     setShippingTiers(shippingTiers.filter((_, idx) => idx !== index));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    mockDb.updateShopConfig({
-      shopName,
-      tagline,
-      hotline,
-      zaloPhone,
-      address,
-      spendToPointRatio: Number(spendToPointRatio) || 10000,
-      pointToVndRatio: Number(pointToVndRatio) || 1000,
-      bank: {
-        bankName,
-        accountNumber,
-        accountHolder,
-      },
-      delivery: {
-        enabled: deliveryEnabled,
-        maxDistanceKm: Number(maxDistanceKm) || 10,
-        areaNote,
-        tiers: shippingTiers,
-      },
-    });
+    try {
+      await storeService.updateShopConfig({
+        shopName,
+        tagline,
+        hotline,
+        zaloPhone,
+        address,
+        spendToPointRatio: Number(spendToPointRatio) || 10000,
+        pointToVndRatio: Number(pointToVndRatio) || 1000,
+        bank: {
+          bankName,
+          accountNumber,
+          accountHolder,
+        },
+        delivery: {
+          enabled: deliveryEnabled,
+          maxDistanceKm: Number(maxDistanceKm) || 10,
+          areaNote,
+          tiers: shippingTiers,
+        },
+      });
 
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (

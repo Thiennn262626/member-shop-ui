@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { CashShift, StaffAccount } from '../../types';
-import { mockDb } from '../../services/mockDb';
+import { storeService } from '../../services/storeService';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 
 interface ShiftManagerProps {
@@ -25,30 +25,38 @@ export function ShiftManager({ currentStaff }: ShiftManagerProps) {
   const [closeNotesInput, setCloseNotesInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const loadData = () => {
-    const all = mockDb.getShifts();
-    setShifts(all);
-    const active = mockDb.getCurrentShift();
-    setCurrentShift(active);
-    if (active) {
-      setActualCashInput(active.expectedCash);
+  const loadData = async () => {
+    try {
+      const [all, active] = await Promise.all([
+        storeService.getShifts(),
+        storeService.getCurrentShift(),
+      ]);
+      setShifts(all);
+      setCurrentShift(active);
+      if (active) {
+        setActualCashInput(active.expectedCash);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
   useEffect(() => {
     loadData();
-    const handleShiftUpdate = () => loadData();
+    const handleShiftUpdate = () => {
+      loadData();
+    };
     window.addEventListener('bake_sip_shift_updated', handleShiftUpdate);
     return () => {
       window.removeEventListener('bake_sip_shift_updated', handleShiftUpdate);
     };
   }, []);
 
-  const handleOpenShift = (e: React.FormEvent) => {
+  const handleOpenShift = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     try {
-      mockDb.openShift({
+      await storeService.openShift({
         staffId: currentStaff.id,
         staffName: currentStaff.name,
         staffRole: currentStaff.role,
@@ -58,18 +66,18 @@ export function ShiftManager({ currentStaff }: ShiftManagerProps) {
       });
       setIsOpenShiftModal(false);
       setOpenNotesInput('');
-      loadData();
+      await loadData();
     } catch (err: any) {
       setErrorMessage(err.message || 'Lỗi khi mở ca làm việc');
     }
   };
 
-  const handleCloseShift = (e: React.FormEvent) => {
+  const handleCloseShift = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentShift) return;
     setErrorMessage('');
     try {
-      mockDb.closeShift(currentShift.id, {
+      await storeService.closeShift(currentShift.id, {
         actualCash: Number(actualCashInput) || 0,
         notes: closeNotesInput,
         nextStaffName: nextStaffNameInput.trim() || undefined,
@@ -77,7 +85,7 @@ export function ShiftManager({ currentStaff }: ShiftManagerProps) {
       setIsCloseShiftModal(false);
       setCloseNotesInput('');
       setNextStaffNameInput('');
-      loadData();
+      await loadData();
     } catch (err: any) {
       setErrorMessage(err.message || 'Lỗi khi chốt két');
     }

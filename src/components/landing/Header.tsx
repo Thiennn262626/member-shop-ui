@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, CreditCard, Store, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { mockDb } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG } from '../../services/storeService';
 
 interface HeaderProps {
   onOpenMemberLookup: () => void;
@@ -11,12 +11,24 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel, onOpenAdmin }) => {
   const { totalItems, openCart } = useCart();
-  const [shopConfig, setShopConfig] = useState(() => mockDb.getShopConfig());
+  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
 
   useEffect(() => {
-    const handleUpdate = () => setShopConfig(mockDb.getShopConfig());
+    let isMounted = true;
+    storeService.getShopConfig().then((cfg) => {
+      if (isMounted && cfg) setShopConfig(cfg);
+    });
+
+    const handleUpdate = () => {
+      storeService.getShopConfig().then((cfg) => {
+        if (isMounted && cfg) setShopConfig(cfg);
+      });
+    };
     window.addEventListener('bake_sip_config_updated', handleUpdate);
-    return () => window.removeEventListener('bake_sip_config_updated', handleUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('bake_sip_config_updated', handleUpdate);
+    };
   }, []);
 
   return (

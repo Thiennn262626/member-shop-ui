@@ -9,7 +9,7 @@ import { LuckyWheelModal } from '../components/landing/LuckyWheelModal';
 import { LiveActivityToast } from '../components/landing/LiveActivityToast';
 import { MobileBottomBar } from '../components/landing/MobileBottomBar';
 import { Footer } from '../components/landing/Footer';
-import { mockDb } from '../services/mockDb';
+import { storeService } from '../services/storeService';
 import type { Order, Product } from '../types';
 
 interface LandingPageProps {
@@ -17,19 +17,27 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAdmin }) => {
-  const [products, setProducts] = useState<Product[]>(() => mockDb.getProducts());
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [lookupPhone, setLookupPhone] = useState('');
   const [isWheelOpen, setIsWheelOpen] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
-  // Lắng nghe cập nhật sản phẩm Realtime khi người bán sửa trong admin
+  // Tải danh sách sản phẩm qua storeService (hỗ trợ cả Mock Demo và Real API)
   useEffect(() => {
+    let isMounted = true;
+    storeService.getProducts().then((data) => {
+      if (isMounted && data) setProducts(data);
+    });
+
     const handleProductChange = () => {
-      setProducts(mockDb.getProducts());
+      storeService.getProducts().then((data) => {
+        if (isMounted && data) setProducts(data);
+      });
     };
     window.addEventListener('bake_sip_product_updated', handleProductChange);
     return () => {
+      isMounted = false;
       window.removeEventListener('bake_sip_product_updated', handleProductChange);
     };
   }, []);

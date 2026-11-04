@@ -23,7 +23,7 @@ import {
   Gift,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { mockDb, SHOP_CONFIG, TIER_CONFIG } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG, TIER_CONFIG } from '../../services/storeService';
 import type { Customer, Order, OrderItem, Product, SelectedOptionChoice } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { ItemCustomizationModal } from '../landing/ItemCustomizationModal';
@@ -41,24 +41,53 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
   onSwitchToStockManager,
 }) => {
   // Products & Categories
-  const [products, setProducts] = useState<Product[]>(() => mockDb.getProducts());
-  const [customers, setCustomers] = useState<Customer[]>(() => mockDb.getCustomers());
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [productSearch, setProductSearch] = useState<string>('');
 
   // Lắng nghe cập nhật sản phẩm & khách hàng Realtime
   useEffect(() => {
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        const [pList, cList, cfg] = await Promise.all([
+          storeService.getProducts(),
+          storeService.getCustomers(),
+          storeService.getShopConfig(),
+        ]);
+        if (isMounted) {
+          if (pList) setProducts(pList);
+          if (cList) setCustomers(cList);
+          if (cfg) setShopConfig(cfg);
+        }
+      } catch (err) {
+        console.error('Failed to load POS data:', err);
+      }
+    };
+
+    loadData();
+
     const handleProductChange = () => {
-      setProducts(mockDb.getProducts());
+      storeService.getProducts().then((p) => isMounted && setProducts(p));
     };
     const handleCustomerChange = () => {
-      setCustomers(mockDb.getCustomers());
+      storeService.getCustomers().then((c) => isMounted && setCustomers(c));
     };
+    const handleConfigChange = () => {
+      storeService.getShopConfig().then((cfg) => isMounted && setShopConfig(cfg));
+    };
+
     window.addEventListener('bake_sip_product_updated', handleProductChange);
     window.addEventListener('bake_sip_order_updated', handleCustomerChange);
+    window.addEventListener('bake_sip_config_updated', handleConfigChange);
     return () => {
+      isMounted = false;
       window.removeEventListener('bake_sip_product_updated', handleProductChange);
       window.removeEventListener('bake_sip_order_updated', handleCustomerChange);
+      window.removeEventListener('bake_sip_config_updated', handleConfigChange);
     };
   }, []);
 
@@ -110,15 +139,19 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
   }, [products, selectedCategory, productSearch]);
 
   // Xử lý tra cứu khách hàng theo SĐT
-  const handlePhoneChange = (input: string) => {
+  const handlePhoneChange = async (input: string) => {
     setCustomerPhone(input);
     const clean = input.trim().replace(/\D/g, '');
     if (clean.length >= 9) {
-      const found = mockDb.findCustomerByPhone(clean);
-      if (found) {
-        setMatchedCustomer(found);
-        setCustomerName(found.name);
-      } else {
+      try {
+        const found = await storeService.findCustomerByPhone(clean);
+        if (found) {
+          setMatchedCustomer(found);
+          setCustomerName(found.name);
+        } else {
+          setMatchedCustomer(null);
+        }
+      } catch {
         setMatchedCustomer(null);
       }
     } else {
@@ -239,7 +272,6 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
   };
 
   // Dynamic Shop Config & Point Rates
-  const shopConfig = mockDb.getShopConfig();
   const pointToVnd = shopConfig.pointToVndRatio || 1000;
   const spendToPoint = shopConfig.spendToPointRatio || 10000;
 
@@ -320,7 +352,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
   };
 
   // Thực hiện tạo đơn hàng
-  const handleProcessOrder = (isDelivery: boolean = false) => {
+  const handleProcessOrder = async (isDelivery: boolean = false) => {
     setErrorMsg(null);
 
     if (cartItems.length === 0) {
@@ -335,6 +367,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
     }
 
     try {
+      setIsSubmitting(true);
       const finalName = customerName.trim() || `Khách ${cleanPhone.slice(-4)}`;
 
       // Quyết định trạng thái đơn
@@ -343,7 +376,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
       const status = isDelivery ? 'confirmed' : 'completed';
       const paymentStatus = isDelivery && paymentMethod === 'cash' ? 'unpaid' : 'paid';
 
-      const { order, customer } = mockDb.createPosOrder({
+      const { order, customer } = await storeService.createPosOrder({
         customerName: finalName,
         customerPhone: cleanPhone,
         items: cartItems,
@@ -385,6 +418,8 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Lỗi khi tạo đơn hàng';
       setErrorMsg(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -905,7 +940,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
             <button
               type="button"
               onClick={() => handleProcessOrder(false)}
-              disabled={cartItems.length === 0}
+              disabled={cartItems.length === 0 || isSubmitting}
               className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-95 transition-all cursor-pointer"
             >
               <CheckCircle2 className="w-5 h-5" />
@@ -916,7 +951,7 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
             <button
               type="button"
               onClick={() => handleProcessOrder(true)}
-              disabled={cartItems.length === 0}
+              disabled={cartItems.length === 0 || isSubmitting}
               className="w-full py-2.5 px-4 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-amber-300 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <Truck className="w-4 h-4" />

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Search, Sparkles, Star, SlidersHorizontal, ShoppingBag, Store, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { mockDb, SHOP_CONFIG } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG } from '../../services/storeService';
 import type { Product, SelectedOptionChoice, ShopConfig } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { ItemCustomizationModal } from './ItemCustomizationModal';
@@ -20,7 +20,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
     lastAddedName,
   } = useCart();
 
-  const [shopConfig, setShopConfig] = useState<ShopConfig>(() => mockDb.getShopConfig());
+  const [shopConfig, setShopConfig] = useState<ShopConfig>(SHOP_CONFIG);
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
@@ -28,9 +28,21 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
 
   // Sync shop config when admin toggles open/pause
   useEffect(() => {
-    const handleConfig = () => setShopConfig(mockDb.getShopConfig());
+    let isMounted = true;
+    storeService.getShopConfig().then((cfg) => {
+      if (isMounted && cfg) setShopConfig(cfg);
+    });
+
+    const handleConfig = () => {
+      storeService.getShopConfig().then((cfg) => {
+        if (isMounted && cfg) setShopConfig(cfg);
+      });
+    };
     window.addEventListener('bake_sip_config_updated', handleConfig);
-    return () => window.removeEventListener('bake_sip_config_updated', handleConfig);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('bake_sip_config_updated', handleConfig);
+    };
   }, []);
 
   const categories = useMemo(() => {

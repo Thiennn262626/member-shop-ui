@@ -9,7 +9,7 @@ import {
   X,
   CheckCircle2,
 } from 'lucide-react';
-import { mockDb, TIER_CONFIG } from '../../services/mockDb';
+import { storeService, TIER_CONFIG } from '../../services/storeService';
 import type { AdminRole, Customer, MemberTier, PointTransaction } from '../../types';
 import { formatCurrency, formatDate, formatPhone } from '../../utils/format';
 
@@ -19,7 +19,7 @@ interface CustomerManagerProps {
 
 export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'owner' }) => {
   const isCashier = userRole === 'cashier';
-  const [customers, setCustomers] = useState<Customer[]>(() => mockDb.getCustomers());
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState<'ALL' | MemberTier>('ALL');
 
@@ -33,14 +33,23 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
 
   // Lắng nghe realtime khi có đơn mới tạo khách hoặc cập nhật điểm
   useEffect(() => {
-    const handleUpdate = () => {
-      setCustomers(mockDb.getCustomers());
+    let isMounted = true;
+    const loadCustomers = async () => {
+      try {
+        const list = await storeService.getCustomers();
+        if (isMounted) setCustomers(list);
+      } catch (err) {
+        console.error('Failed to load customers:', err);
+      }
     };
-    window.addEventListener('bake_sip_customer_updated', handleUpdate);
-    window.addEventListener('bake_sip_order_updated', handleUpdate);
+    loadCustomers();
+
+    window.addEventListener('bake_sip_customer_updated', loadCustomers);
+    window.addEventListener('bake_sip_order_updated', loadCustomers);
     return () => {
-      window.removeEventListener('bake_sip_customer_updated', handleUpdate);
-      window.removeEventListener('bake_sip_order_updated', handleUpdate);
+      isMounted = false;
+      window.removeEventListener('bake_sip_customer_updated', loadCustomers);
+      window.removeEventListener('bake_sip_order_updated', loadCustomers);
     };
   }, []);
 
@@ -73,10 +82,14 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
   }, [customers, tierFilter, searchQuery]);
 
   // Mở modal lịch sử điểm
-  const handleOpenHistory = (c: Customer) => {
+  const handleOpenHistory = async (c: Customer) => {
     setSelectedCustomerForHistory(c);
-    const txs = mockDb.getTransactions(c.id);
-    setCustomerTransactions(txs);
+    try {
+      const txs = await storeService.getTransactions(c.id);
+      setCustomerTransactions(txs);
+    } catch {
+      setCustomerTransactions([]);
+    }
   };
 
   // Mở modal điều chỉnh điểm
@@ -88,17 +101,18 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
   };
 
   // Xác nhận điều chỉnh điểm
-  const handleConfirmAdjust = (e: React.FormEvent) => {
+  const handleConfirmAdjust = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCustomerForAdjust) return;
 
     try {
-      const updated = mockDb.adjustCustomerPoints(
+      const updated = await storeService.adjustCustomerPoints(
         selectedCustomerForAdjust.id,
         pointsDeltaInput,
         adjustNoteInput.trim()
       );
-      setCustomers(mockDb.getCustomers());
+      const list = await storeService.getCustomers();
+      setCustomers(list);
       setSelectedCustomerForAdjust(null);
       showToast(
         `Đã ${pointsDeltaInput >= 0 ? 'cộng' : 'trừ'} ${Math.abs(pointsDeltaInput)} điểm cho khách hàng ${updated.name}!`

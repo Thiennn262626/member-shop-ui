@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Order } from '../../types';
 import { formatCurrency, formatDateTime } from '../../utils/format';
-import { mockDb, SHOP_CONFIG } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG } from '../../services/storeService';
 
 interface PrintBillModalProps {
   order: Order;
@@ -10,7 +10,17 @@ interface PrintBillModalProps {
 
 export function PrintBillModal({ order, onClose }: PrintBillModalProps) {
   const [activeTab, setActiveTab] = useState<'bill' | 'stickers'>('bill');
-  const shopConfig = mockDb.getShopConfig() || SHOP_CONFIG;
+  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
+
+  useEffect(() => {
+    let isMounted = true;
+    storeService.getShopConfig().then((cfg) => {
+      if (isMounted && cfg) setShopConfig(cfg);
+    }).catch(console.error);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Tách từng sản phẩm thành các tem nhãn riêng biệt (1 món số lượng N -> N tem)
   const stickerItems: Array<{

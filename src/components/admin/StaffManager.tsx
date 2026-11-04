@@ -18,7 +18,7 @@ import {
   Eye,
   CheckCheck,
 } from 'lucide-react';
-import { mockDb } from '../../services/mockDb';
+import { storeService } from '../../services/storeService';
 import type { AdminRole, MonthlyPayrollSummary, StaffAccount, WorkShift, WorkShiftStatus } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { CashierScheduleView } from './CashierScheduleView';
@@ -41,8 +41,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
   // --- OWNER MANAGEMENT PORTAL ---
   const [activeTab, setActiveTab] = useState<'assign_calendar' | 'overview_calendar' | 'payroll' | 'accounts'>('assign_calendar');
-  const [staffList, setStaffList] = useState<StaffAccount[]>(() => mockDb.getStaffAccounts());
-  const [workShifts, setWorkShifts] = useState<WorkShift[]>(() => mockDb.getWorkShifts());
+  const [staffList, setStaffList] = useState<StaffAccount[]>([]);
+  const [workShifts, setWorkShifts] = useState<WorkShift[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Month navigation (YYYY-MM)
@@ -51,10 +51,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
 
   // Selected staff for assigning shifts
-  const [assigningStaffId, setAssigningStaffId] = useState<string>(() => {
-    const defaultStaff = mockDb.getStaffAccounts().find((s) => s.role === 'cashier') || mockDb.getStaffAccounts()[0];
-    return defaultStaff ? defaultStaff.id : '';
-  });
+  const [assigningStaffId, setAssigningStaffId] = useState<string>('');
 
   // Pending shift selections for assigning: Map of `${date}_${shiftType}` -> boolean
   // Example: { '2026-03-24_morning': true, '2026-03-24_afternoon': false }
@@ -83,11 +80,23 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   const [payrollList, setPayrollList] = useState<MonthlyPayrollSummary[]>([]);
 
   // Load database
-  const loadData = () => {
-    const accounts = mockDb.getStaffAccounts();
-    setStaffList(accounts);
-    setWorkShifts(mockDb.getWorkShifts());
-    setPayrollList(mockDb.getMonthlyPayroll(selectedMonth));
+  const loadData = async () => {
+    try {
+      const [accounts, shifts, payroll] = await Promise.all([
+        storeService.getStaffAccounts(),
+        storeService.getWorkShifts(),
+        storeService.getMonthlyPayrolls(selectedMonth),
+      ]);
+      setStaffList(accounts);
+      setWorkShifts(shifts);
+      setPayrollList(payroll);
+      if (!assigningStaffId && accounts.length > 0) {
+        const defaultStaff = accounts.find((s) => s.role === 'cashier') || accounts[0];
+        setAssigningStaffId(defaultStaff.id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
@@ -240,7 +249,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   };
 
   // Save all pending shifts
-  const handleSaveAllSchedule = () => {
+  const handleSaveAllSchedule = async () => {
     if (!currentAssigningStaff) return;
 
     const assignments: Array<{ date: string; shiftType: 'morning' | 'afternoon' }> = [];
@@ -254,12 +263,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     });
 
     try {
-      mockDb.saveEmployeeMonthlySchedule(currentAssigningStaff.id, selectedMonth, assignments);
+      await storeService.saveMonthlyRoster(currentAssigningStaff.id, selectedMonth, assignments);
       showToast(
         `✓ Đã lưu toàn bộ ${assignments.length} ca làm việc tháng ${selectedMonth} cho ${currentAssigningStaff.name}!`
       );
       setHasUnsavedChanges(false);
-      loadData();
+      await loadData();
     } catch (e: any) {
       alert(e.message || 'Lỗi khi lưu lịch làm việc');
     }
@@ -273,12 +282,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setConfirmNotesInput(shift.actualNotes || '');
   };
 
-  const handleSaveQuickConfirm = (e: React.FormEvent) => {
+  const handleSaveQuickConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickConfirmShift) return;
 
     try {
-      mockDb.confirmDailyAttendance(
+      await storeService.confirmDailyAttendance(
         quickConfirmShift.id,
         confirmHoursInput,
         confirmStatusInput,
@@ -286,7 +295,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       );
       showToast(`✓ Đã chốt số tiếng ngày ${quickConfirmShift.date}: ${confirmHoursInput} giờ!`);
       setQuickConfirmShift(null);
-      loadData();
+      await loadData();
     } catch (e: any) {
       alert(e.message || 'Lỗi khi chấm công');
     }
@@ -319,7 +328,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
     setIsAccountModalOpen(true);
   };
 
-  const handleSaveAccount = (e: React.FormEvent) => {
+  const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     if (!formUsername.trim()) return setFormError('Vui lòng nhập tên đăng nhập.');
@@ -327,7 +336,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
     try {
       if (editingAccount) {
-        mockDb.updateStaffAccount(editingAccount.id, {
+        await storeService.updateStaffAccount(editingAccount.id, {
           username: formUsername.trim().toLowerCase(),
           name: formName.trim(),
           role: formRole,
@@ -338,7 +347,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         });
         showToast(`Đã cập nhật nhân viên "${formName}"!`);
       } else {
-        mockDb.addStaffAccount({
+        await storeService.addStaffAccount({
           username: formUsername.trim().toLowerCase(),
           name: formName.trim(),
           role: formRole,
@@ -351,9 +360,22 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
         showToast(`Đã thêm nhân viên mới "${formName}"!`);
       }
       setIsAccountModalOpen(false);
-      loadData();
+      await loadData();
     } catch (err: any) {
       setFormError(err.message || 'Lỗi khi lưu tài khoản');
+    }
+  };
+
+  const handleUpdateAdjustment = async (staffId: string, allowance?: number, deduction?: number) => {
+    try {
+      const target = payrollList.find((p) => p.staffId === staffId);
+      const allow = allowance !== undefined ? allowance : (target?.allowance || 0);
+      const deduct = deduction !== undefined ? deduction : (target?.deduction || 0);
+      await storeService.adjustMonthlyPayroll(staffId, selectedMonth, allow, deduct);
+      const payroll = await storeService.getMonthlyPayrolls(selectedMonth);
+      setPayrollList(payroll);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -982,9 +1004,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           min="0"
                           value={row.allowance}
                           onChange={(e) =>
-                            mockDb.savePayrollAdjustments(selectedMonth, row.staffId, {
-                              allowance: Number(e.target.value),
-                            })
+                            handleUpdateAdjustment(row.staffId, Number(e.target.value), undefined)
                           }
                           className="w-24 px-2 py-1 bg-stone-50 border border-stone-200 rounded-lg text-right font-mono text-emerald-700 font-bold text-xs"
                         />
@@ -997,9 +1017,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                           min="0"
                           value={row.deduction}
                           onChange={(e) =>
-                            mockDb.savePayrollAdjustments(selectedMonth, row.staffId, {
-                              deduction: Number(e.target.value),
-                            })
+                            handleUpdateAdjustment(row.staffId, undefined, Number(e.target.value))
                           }
                           className="w-24 px-2 py-1 bg-stone-50 border border-stone-200 rounded-lg text-right font-mono text-rose-700 font-bold text-xs"
                         />

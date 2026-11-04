@@ -8,8 +8,9 @@ import {
   AlertCircle,
   X,
   KeyRound,
+  Loader2,
 } from 'lucide-react';
-import { mockDb, SHOP_CONFIG } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG } from '../../services/storeService';
 import type { AdminUserData } from '../../types';
 
 interface AdminLoginModalProps {
@@ -30,79 +31,57 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleLogin = (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg(null);
     setIsLoading(true);
 
-    setTimeout(() => {
-      try {
-        const staff = mockDb.authenticateStaff(username, password);
-        if (staff) {
-          const userData: AdminUserData = {
-            id: staff.id,
-            username: staff.username,
-            name: staff.name,
-            role: staff.role,
-            roleTitle: staff.role === 'owner' ? 'Chủ Tiệm (Toàn Quyền)' : 'Thu Ngân Ca Trực',
-            shift: staff.shift,
-          };
-          sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(userData));
-          setIsLoading(false);
-          onLoginSuccess(userData);
-        } else {
-          setIsLoading(false);
-          setErrorMsg('Tên đăng nhập hoặc mật khẩu/PIN không đúng. Vui lòng thử lại!');
-        }
-      } catch (err: unknown) {
+    try {
+      const userData = await storeService.authenticateStaff(username, password);
+      if (userData) {
         setIsLoading(false);
-        const msg = err instanceof Error ? err.message : 'Lỗi xác thực';
-        setErrorMsg(msg);
+        onLoginSuccess(userData);
+      } else {
+        setIsLoading(false);
+        setErrorMsg('Tên đăng nhập hoặc mật khẩu/PIN không đúng. Vui lòng thử lại!');
       }
-    }, 300);
+    } catch (err: unknown) {
+      setIsLoading(false);
+      const msg = err instanceof Error ? err.message : 'Lỗi xác thực';
+      setErrorMsg(msg);
+    }
   };
 
-  const handleQuickLogin = (userType: 'admin' | 'thungan') => {
+  const handleQuickLogin = async (userType: 'admin' | 'thungan') => {
     const targetUser = userType === 'admin' ? 'admin' : 'thungan';
     setUsername(targetUser);
     setPassword('123456');
     setErrorMsg(null);
     setIsLoading(true);
 
-    setTimeout(() => {
-      try {
-        const staff = mockDb.authenticateStaff(targetUser, '123456');
-        if (staff) {
-          const userData: AdminUserData = {
-            id: staff.id,
-            username: staff.username,
-            name: staff.name,
-            role: staff.role,
-            roleTitle: staff.role === 'owner' ? 'Chủ Tiệm (Toàn Quyền)' : 'Thu Ngân Ca Trực',
-            shift: staff.shift,
-          };
-          sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(userData));
-          setIsLoading(false);
-          onLoginSuccess(userData);
-        } else {
-          const fallbackData: AdminUserData = {
-            id: targetUser === 'admin' ? 'staff-admin' : 'staff-thungan',
-            username: targetUser,
-            name: targetUser === 'admin' ? 'Nguyễn Quản Lý (Chủ Tiệm)' : 'Trần Thu Ngân',
-            role: targetUser === 'admin' ? 'owner' : 'cashier',
-            roleTitle: targetUser === 'admin' ? 'Chủ Tiệm (Toàn Quyền)' : 'Thu Ngân Ca Trực',
-            shift: targetUser === 'admin' ? 'Toàn Thời Gian' : 'Ca Sáng (06:30 - 14:30)',
-          };
-          sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(fallbackData));
-          setIsLoading(false);
-          onLoginSuccess(fallbackData);
-        }
-      } catch (err: unknown) {
+    try {
+      const userData = await storeService.authenticateStaff(targetUser, '123456');
+      if (userData) {
         setIsLoading(false);
-        const msg = err instanceof Error ? err.message : 'Lỗi xác thực';
-        setErrorMsg(msg);
+        onLoginSuccess(userData);
+      } else {
+        const fallbackData: AdminUserData = {
+          id: targetUser === 'admin' ? 'staff-admin' : 'staff-thungan',
+          username: targetUser,
+          name: targetUser === 'admin' ? 'Nguyễn Quản Lý (Chủ Tiệm)' : 'Trần Thu Ngân',
+          role: targetUser === 'admin' ? 'owner' : 'cashier',
+          roleTitle: targetUser === 'admin' ? 'Chủ Tiệm (Toàn Quyền)' : 'Thu Ngân Ca Trực',
+          shift: targetUser === 'admin' ? 'Toàn Thời Gian' : 'Ca Sáng (06:30 - 14:30)',
+        };
+        sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(fallbackData));
+        setIsLoading(false);
+        onLoginSuccess(fallbackData);
       }
-    }, 250);
+    } catch (err: unknown) {
+      setIsLoading(false);
+      const msg = err instanceof Error ? err.message : 'Lỗi xác thực';
+      setErrorMsg(msg);
+    }
   };
 
   return (
@@ -209,9 +188,18 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               disabled={isLoading}
               className="w-full py-3 px-4 bg-stone-900 hover:bg-stone-800 text-amber-300 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-stone-900/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>{isLoading ? 'Đang xác thực...' : 'Đăng Nhập Vào Cổng Quản Lý'}</span>
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                  <span>Đang xác thực...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Đăng Nhập Vào Cổng Quản Lý</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
 
             {/* Back to Landing Link */}

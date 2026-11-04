@@ -30,7 +30,7 @@ import {
   Ticket,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { mockDb, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../services/mockDb';
+import { storeService, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../services/storeService';
 import type { AdminUserData, Customer, Order, OrderStatus } from '../types';
 import { formatCurrency, formatDate, formatDateTime, formatPhone } from '../utils/format';
 import { PosOrderCreator } from '../components/admin/PosOrderCreator';
@@ -90,7 +90,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [orderSearchCode, setOrderSearchCode] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeCustomer, setActiveCustomer] = useState<Customer | null>(null);
-  const [orders, setOrders] = useState<Order[]>(() => mockDb.getOrders());
+  const [orders, setOrders] = useState<Order[]>([]);
   const [discountPointsInput, setDiscountPointsInput] = useState<number>(0);
   const [shipperNoteInput, setShipperNoteInput] = useState<string>('');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -103,34 +103,49 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Hàm load lại dữ liệu đơn và cập nhật selectedOrder
-  const refreshData = useCallback(() => {
-    const updatedOrders = mockDb.getOrders();
-    setOrders(updatedOrders);
+  // Khởi tạo danh sách đơn hàng ban đầu
+  useEffect(() => {
+    let isMounted = true;
+    storeService.getOrders().then((initialOrders) => {
+      if (isMounted) setOrders(initialOrders);
+    }).catch(console.error);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-    if (selectedOrder) {
-      const refreshedSelected = updatedOrders.find((o) => o.id === selectedOrder.id);
-      if (refreshedSelected) {
-        setSelectedOrder(refreshedSelected);
-        const cust = mockDb.findCustomerByPhone(refreshedSelected.customerPhone);
-        setActiveCustomer(cust || null);
+  // Hàm load lại dữ liệu đơn và cập nhật selectedOrder
+  const refreshData = useCallback(async () => {
+    try {
+      const updatedOrders = await storeService.getOrders();
+      setOrders(updatedOrders);
+
+      if (selectedOrder) {
+        const refreshedSelected = updatedOrders.find((o) => o.id === selectedOrder.id || o.orderCode === selectedOrder.orderCode);
+        if (refreshedSelected) {
+          setSelectedOrder(refreshedSelected);
+          const cust = await storeService.findCustomerByPhone(refreshedSelected.customerPhone);
+          setActiveCustomer(cust || null);
+        }
       }
+    } catch (err) {
+      console.error('Failed to refresh orders:', err);
     }
   }, [selectedOrder]);
 
   // Lắng nghe Realtime Event
   useEffect(() => {
-    const handleOrderUpdate = (e: Event) => {
+    const handleOrderUpdate = async (e: Event) => {
       const customEvent = e as CustomEvent<Order>;
       const updatedOrder = customEvent.detail;
-      const latestOrders = mockDb.getOrders();
+      const latestOrders = await storeService.getOrders();
       setOrders(latestOrders);
 
       if (selectedOrder && (selectedOrder.id === updatedOrder?.id || selectedOrder.orderCode === updatedOrder?.orderCode)) {
-        const found = latestOrders.find((o) => o.id === selectedOrder.id);
+        const found = latestOrders.find((o) => o.id === selectedOrder.id || o.orderCode === selectedOrder.orderCode);
         if (found) {
           setSelectedOrder(found);
-          const cust = mockDb.findCustomerByPhone(found.customerPhone);
+          const cust = await storeService.findCustomerByPhone(found.customerPhone);
           setActiveCustomer(cust || null);
         }
       }
@@ -143,67 +158,78 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     };
 
     window.addEventListener('bake_sip_order_updated', handleOrderUpdate);
+    window.addEventListener('bake_sip_order_created', handleOrderUpdate);
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
       window.removeEventListener('bake_sip_order_updated', handleOrderUpdate);
+      window.removeEventListener('bake_sip_order_created', handleOrderUpdate);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [selectedOrder, refreshData]);
 
   // Tra cứu mã đơn hoặc SĐT
-  const handleLookupOrder = (codeOrPhoneToSearch?: string) => {
+  const handleLookupOrder = async (codeOrPhoneToSearch?: string) => {
     setSearchError(null);
     setActionSuccess(null);
     const query = (codeOrPhoneToSearch ?? orderSearchCode).trim();
     if (!query) return;
 
-    let found = mockDb.getOrderByCode(query);
-    if (!found) {
-      const cleanPhone = query.replace(/\D/g, '');
-      if (cleanPhone) {
-        const phoneOrders = mockDb.getOrdersByPhone(cleanPhone);
-        if (phoneOrders.length > 0) {
-          found = phoneOrders[0];
+    try {
+      let found = await storeService.getOrderByCode(query);
+      if (!found) {
+        const cleanPhone = query.replace(/\D/g, '');
+        if (cleanPhone) {
+          const phoneOrders = await storeService.getOrdersByPhone(cleanPhone);
+          if (phoneOrders.length > 0) {
+            found = phoneOrders[0];
+          }
         }
       }
-    }
 
-    if (found) {
-      setSelectedOrder(found);
-      const cust = mockDb.findCustomerByPhone(found.customerPhone);
-      setActiveCustomer(cust || null);
-      setDiscountPointsInput(found.discountPointsUsed || 0);
-      setShipperNoteInput(found.shipperInfo || '');
-    } else {
-      setSelectedOrder(null);
-      setActiveCustomer(null);
-      setSearchError(`Không tìm thấy đơn hàng nào có mã hoặc SĐT "${query}".`);
+      if (found) {
+        setSelectedOrder(found);
+        const cust = await storeService.findCustomerByPhone(found.customerPhone);
+        setActiveCustomer(cust || null);
+        setDiscountPointsInput(found.discountPointsUsed || 0);
+        setShipperNoteInput(found.shipperInfo || '');
+      } else {
+        setSelectedOrder(null);
+        setActiveCustomer(null);
+        setSearchError(`Không tìm thấy đơn hàng nào có mã hoặc SĐT "${query}".`);
+      }
+    } catch (err: any) {
+      setSearchError(err.message || 'Lỗi tra cứu đơn hàng');
     }
   };
 
-  const handleSelectOrderFromList = (order: Order) => {
+  const handleSelectOrderFromList = async (order: Order) => {
     setOrderSearchCode(order.orderCode);
     setSelectedOrder(order);
-    const cust = mockDb.findCustomerByPhone(order.customerPhone);
-    setActiveCustomer(cust || null);
+    try {
+      const cust = await storeService.findCustomerByPhone(order.customerPhone);
+      setActiveCustomer(cust || null);
+    } catch {
+      setActiveCustomer(null);
+    }
     setDiscountPointsInput(order.discountPointsUsed || 0);
     setShipperNoteInput(order.shipperInfo || '');
     setSearchError(null);
     setActionSuccess(null);
   };
 
-  const handleConfirmAndPrepare = () => {
+  const handleConfirmAndPrepare = async () => {
     if (!selectedOrder) return;
     try {
-      const { order: updated, customer } = mockDb.updateOrderStatus(selectedOrder.orderCode, {
+      const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         status: 'confirmed',
         discountPointsUsed: discountPointsInput,
       });
 
       setSelectedOrder(updated);
       setActiveCustomer(customer);
-      setOrders(mockDb.getOrders());
+      const latestOrders = await storeService.getOrders();
+      setOrders(latestOrders);
       setActionSuccess(`Đã xác nhận đơn ${updated.orderCode} & Bắt đầu làm bánh.`);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Lỗi cập nhật đơn';
@@ -211,16 +237,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleTogglePayment = (paymentStatus: 'paid' | 'unpaid') => {
+  const handleTogglePayment = async (paymentStatus: 'paid' | 'unpaid') => {
     if (!selectedOrder) return;
     try {
-      const { order: updated, customer } = mockDb.updateOrderStatus(selectedOrder.orderCode, {
+      const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         paymentStatus,
       });
 
       setSelectedOrder(updated);
       setActiveCustomer(customer);
-      setOrders(mockDb.getOrders());
+      const latestOrders = await storeService.getOrders();
+      setOrders(latestOrders);
 
       if (paymentStatus === 'paid') {
         confetti({ particleCount: 40, spread: 50, origin: { y: 0.6 } });
@@ -234,17 +261,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleStartShipping = () => {
+  const handleStartShipping = async () => {
     if (!selectedOrder) return;
     try {
-      const { order: updated, customer } = mockDb.updateOrderStatus(selectedOrder.orderCode, {
+      const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         status: 'shipping',
         shipperInfo: shipperNoteInput.trim() || 'Shipper tiệm đang giao',
       });
 
       setSelectedOrder(updated);
       setActiveCustomer(customer);
-      setOrders(mockDb.getOrders());
+      const latestOrders = await storeService.getOrders();
+      setOrders(latestOrders);
       setActionSuccess(`Đã chuyển đơn ${updated.orderCode} sang trạng thái "Đang giao hàng".`);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Lỗi cập nhật giao hàng';
@@ -252,17 +280,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleCompleteOrder = () => {
+  const handleCompleteOrder = async () => {
     if (!selectedOrder) return;
     try {
-      const { order: updated, customer } = mockDb.updateOrderStatus(selectedOrder.orderCode, {
+      const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         status: 'completed',
         paymentStatus: 'paid',
       });
 
       setSelectedOrder(updated);
       setActiveCustomer(customer);
-      setOrders(mockDb.getOrders());
+      const latestOrders = await storeService.getOrders();
+      setOrders(latestOrders);
 
       confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
       setActionSuccess(
@@ -274,18 +303,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handleCancelOrder = () => {
+  const handleCancelOrder = async () => {
     if (!selectedOrder) return;
     if (!window.confirm(`Bạn có chắc chắn muốn hủy đơn hàng ${selectedOrder.orderCode} không?`)) return;
 
     try {
-      const { order: updated, customer } = mockDb.updateOrderStatus(selectedOrder.orderCode, {
+      const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         status: 'cancelled',
       });
 
       setSelectedOrder(updated);
       setActiveCustomer(customer);
-      setOrders(mockDb.getOrders());
+      const latestOrders = await storeService.getOrders();
+      setOrders(latestOrders);
       setActionSuccess(`Đã hủy đơn hàng ${updated.orderCode}.`);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Lỗi khi hủy đơn';
@@ -293,10 +323,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const handlePosOrderCreated = (orderId: string) => {
-    const updated = mockDb.getOrders();
+  const handlePosOrderCreated = async (orderId: string) => {
+    const updated = await storeService.getOrders();
     setOrders(updated);
-    const created = updated.find((o) => o.id === orderId);
+    const created = updated.find((o) => o.id === orderId || o.orderCode === orderId);
     if (created) setSelectedOrder(created);
   };
 

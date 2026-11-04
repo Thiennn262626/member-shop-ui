@@ -17,10 +17,11 @@ import {
   CheckCircle2,
   Gift,
   User,
+  Loader2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../../context/CartContext';
-import { mockDb, SHOP_CONFIG, TIER_CONFIG } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG, TIER_CONFIG, calculateShippingFee } from '../../services/storeService';
 import type { Customer, Order, Voucher } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
@@ -39,7 +40,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   const { items, isCartOpen, closeCart, updateQuantity, removeFromCart, totalAmount, estimatedPoints, clearCart } =
     useCart();
 
-  const [shopConfig, setShopConfig] = useState(() => mockDb.getShopConfig() || SHOP_CONFIG);
+  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [orderNote, setOrderNote] = useState('');
@@ -66,22 +68,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
 
   // Load shop config & active vouchers
   useEffect(() => {
-    const handleConfig = () => {
-      const cfg = mockDb.getShopConfig();
-      setShopConfig(cfg);
-    };
-    const handleVoucher = () => {
-      setAvailableVouchers(mockDb.getVouchers().filter((v) => v.isActive));
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        const [cfg, vouchers] = await Promise.all([
+          storeService.getShopConfig(),
+          storeService.getVouchers(),
+        ]);
+        if (isMounted) {
+          if (cfg) setShopConfig(cfg);
+          if (vouchers) setAvailableVouchers(vouchers.filter((v) => v.isActive));
+        }
+      } catch (err) {
+        console.error('Failed to load shop config / vouchers:', err);
+      }
     };
 
-    handleConfig();
-    handleVoucher();
+    loadData();
 
-    window.addEventListener('bake_sip_config_updated', handleConfig);
-    window.addEventListener('bake_sip_voucher_updated', handleVoucher);
+    window.addEventListener('bake_sip_config_updated', loadData);
+    window.addEventListener('bake_sip_voucher_updated', loadData);
     return () => {
-      window.removeEventListener('bake_sip_config_updated', handleConfig);
-      window.removeEventListener('bake_sip_voucher_updated', handleVoucher);
+      isMounted = false;
+      window.removeEventListener('bake_sip_config_updated', loadData);
+      window.removeEventListener('bake_sip_voucher_updated', loadData);
     };
   }, []);
 
@@ -125,22 +135,32 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   const validDiscountPoints = Math.min(discountPointsUsed, maxAllowedCashDiscountPoints);
   const pointsCashDiscount = validDiscountPoints * pointToVnd;
 
-  // Tính phí ship tự động từ mockDb theo adjustedSubtotal
-  const shippingFee = mockDb.calculateShippingFee(adjustedSubtotal, fulfillmentType);
+  // Tính phí ship tự động từ config theo adjustedSubtotal
+  const shippingFee = calculateShippingFee(adjustedSubtotal, fulfillmentType, shopConfig);
 
   // Tái kiểm tra voucher khi adjustedSubtotal thay đổi
   useEffect(() => {
+    let isMounted = true;
     if (appliedVoucher) {
-      const result = mockDb.validateAndCalculateVoucher(appliedVoucher.code, adjustedSubtotal);
-      if (result.isValid) {
-        setVoucherDiscount(result.discountAmount);
-        setVoucherError(null);
-      } else {
+      storeService.validateAndCalculateVoucher(appliedVoucher.code, adjustedSubtotal).then((result) => {
+        if (!isMounted) return;
+        if (result.isValid) {
+          setVoucherDiscount(result.discountAmount);
+          setVoucherError(null);
+        } else {
+          setAppliedVoucher(null);
+          setVoucherDiscount(0);
+          setVoucherError(result.message || 'Mã giảm giá không còn thỏa điều kiện đơn hàng.');
+        }
+      }).catch(() => {
+        if (!isMounted) return;
         setAppliedVoucher(null);
         setVoucherDiscount(0);
-        setVoucherError(result.message || 'Mã giảm giá không còn thỏa điều kiện đơn hàng.');
-      }
+      });
     }
+    return () => {
+      isMounted = false;
+    };
   }, [adjustedSubtotal, appliedVoucher]);
 
   const toggleRedeemItem = (cartItemId: string) => {
@@ -165,18 +185,22 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
     }
   };
 
-  const handlePhoneInputChange = (input: string) => {
+  const handlePhoneInputChange = async (input: string) => {
     setCustomerPhone(input);
     setErrorMessage(null);
     const clean = input.trim().replace(/\D/g, '');
     if (clean.length >= 9) {
-      const found = mockDb.findCustomerByPhone(clean);
-      if (found) {
-        setMatchedCustomer(found);
-        if (!customerName.trim()) {
-          setCustomerName(found.name);
+      try {
+        const found = await storeService.findCustomerByPhone(clean);
+        if (found) {
+          setMatchedCustomer(found);
+          if (!customerName.trim()) {
+            setCustomerName(found.name);
+          }
+        } else {
+          setMatchedCustomer(null);
         }
-      } else {
+      } catch {
         setMatchedCustomer(null);
       }
     } else {
@@ -189,7 +213,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   if (!isCartOpen) return null;
 
   // Áp dụng voucher
-  const handleApplyVoucher = (codeToApply?: string) => {
+  const handleApplyVoucher = async (codeToApply?: string) => {
     setVoucherError(null);
     const code = (codeToApply || promoCodeInput).trim().toUpperCase();
     if (!code) {
@@ -197,16 +221,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
       return;
     }
 
-    const result = mockDb.validateAndCalculateVoucher(code, adjustedSubtotal);
-    if (result.isValid) {
-      setAppliedVoucher(result.voucher || null);
-      setVoucherDiscount(result.discountAmount);
-      setPromoCodeInput(code);
-      setVoucherError(null);
-    } else {
-      setAppliedVoucher(null);
-      setVoucherDiscount(0);
-      setVoucherError(result.message || 'Mã giảm giá không hợp lệ');
+    try {
+      const result = await storeService.validateAndCalculateVoucher(code, adjustedSubtotal);
+      if (result.isValid) {
+        setAppliedVoucher(result.voucher || null);
+        setVoucherDiscount(result.discountAmount);
+        setPromoCodeInput(code);
+        setVoucherError(null);
+      } else {
+        setAppliedVoucher(null);
+        setVoucherDiscount(0);
+        setVoucherError(result.message || 'Mã giảm giá không hợp lệ');
+      }
+    } catch (err: any) {
+      setVoucherError(err.message || 'Lỗi khi kiểm tra mã voucher');
     }
   };
 
@@ -235,7 +263,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
 
   const finalTotal = Math.max(0, adjustedSubtotal - voucherDiscount - pointsCashDiscount + shippingFee);
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     setErrorMessage(null);
 
     if (!shopConfig.isOpen) {
@@ -319,31 +347,39 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
       ];
     });
 
-    // Gửi dữ liệu tạo đơn xuống MockDB (Backend mô phỏng sẽ tính toán lại an toàn)
-    const { order } = mockDb.createPendingOrder({
-      customerName: customerName.trim() || `Khách ${cleanPhone.slice(-4)}`,
-      customerPhone: cleanPhone,
-      items: orderItems,
-      note: orderNote.trim() || undefined,
-      fulfillmentType,
-      deliveryAddress: fulfillmentType === 'delivery' ? deliveryAddress.trim() : undefined,
-      deliveryTimeType,
-      deliveryScheduledTime: deliveryTimeType === 'scheduled' ? deliveryScheduledTime : undefined,
-      voucherCode: appliedVoucher ? appliedVoucher.code : promoCodeInput.trim() || undefined,
-      discountPointsUsed: validDiscountPoints,
-      totalPointsRedeemedItems,
-    });
+    // Gửi dữ liệu tạo đơn xuống storeService (tự động xử lý Demo hoặc API Thật)
+    try {
+      setIsSubmitting(true);
+      const { order } = await storeService.createPendingOrder({
+        customerName: customerName.trim() || `Khách ${cleanPhone.slice(-4)}`,
+        customerPhone: cleanPhone,
+        items: orderItems,
+        note: orderNote.trim() || undefined,
+        fulfillmentType,
+        deliveryAddress: fulfillmentType === 'delivery' ? deliveryAddress.trim() : undefined,
+        deliveryTimeType,
+        deliveryScheduledTime: deliveryTimeType === 'scheduled' ? deliveryScheduledTime : undefined,
+        voucherCode: appliedVoucher ? appliedVoucher.code : promoCodeInput.trim() || undefined,
+        discountPointsUsed: validDiscountPoints,
+        totalPointsRedeemedItems,
+      });
 
-    // Confetti celebration
-    confetti({
-      particleCount: 70,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
+      // Confetti celebration
+      confetti({
+        particleCount: 70,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
 
-    clearCart();
-    closeCart();
-    onOrderCreated(order);
+      clearCart();
+      closeCart();
+      onOrderCreated(order);
+    } catch (err: any) {
+      console.error('Error creating order:', err);
+      setErrorMessage(err.message || 'Không thể tạo đơn hàng. Vui lòng thử lại!');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1034,15 +1070,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
               <button
                 type="button"
                 onClick={handleCreateOrder}
-                disabled={!shopConfig.isOpen}
+                disabled={!shopConfig.isOpen || isSubmitting}
                 className={`w-full py-2.5 sm:py-3.5 px-3 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer ${
-                  !shopConfig.isOpen
-                    ? 'bg-rose-100 text-rose-800 border border-rose-300 cursor-not-allowed opacity-90'
+                  !shopConfig.isOpen || isSubmitting
+                    ? 'bg-stone-300 text-stone-600 border border-stone-300 cursor-not-allowed opacity-90'
                     : 'bg-stone-900 hover:bg-stone-800 text-amber-300 shadow-stone-900/20'
                 }`}
               >
                 {!shopConfig.isOpen ? (
                   <span>Tiệm Đang Tạm Nghỉ Bán</span>
+                ) : isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                    <span>Đang khởi tạo đơn hàng...</span>
+                  </>
                 ) : (
                   <>
                     <span>Xác Nhận Đặt Hàng & Lấy Mã Đơn</span>

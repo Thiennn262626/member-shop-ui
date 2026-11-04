@@ -11,14 +11,14 @@ import {
   Flame,
   UtensilsCrossed,
 } from 'lucide-react';
-import { mockDb } from '../../services/mockDb';
+import { storeService, SHOP_CONFIG } from '../../services/storeService';
 import type { GlobalOptionItem, Product, ShopConfig } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
 export const StockToggleManager: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(() => mockDb.getProducts());
-  const [shopConfig, setShopConfig] = useState<ShopConfig>(() => mockDb.getShopConfig());
-  const [optionsList, setOptionsList] = useState<GlobalOptionItem[]>(() => mockDb.getGlobalOptionsList());
+  const [products, setProducts] = useState<Product[]>([]);
+  const [shopConfig, setShopConfig] = useState<ShopConfig>(SHOP_CONFIG);
+  const [optionsList, setOptionsList] = useState<GlobalOptionItem[]>([]);
 
   // Active sub-tab: 'products' | 'toppings'
   const [activeTab, setActiveTab] = useState<'products' | 'toppings'>('products');
@@ -35,7 +35,7 @@ export const StockToggleManager: React.FC = () => {
 
   // Pause Reason edit state
   const [pauseReasonInput, setPauseReasonInput] = useState(
-    shopConfig.pauseReason || 'Hôm nay tiệm tạm ngưng nhận đơn online để chuẩn bị nguyên liệu.'
+    'Hôm nay tiệm tạm ngưng nhận đơn online để chuẩn bị nguyên liệu.'
   );
   const [isEditingReason, setIsEditingReason] = useState(false);
 
@@ -48,13 +48,26 @@ export const StockToggleManager: React.FC = () => {
   };
 
   // Sync with Realtime Events
-  const refreshAll = () => {
-    setProducts(mockDb.getProducts());
-    setShopConfig(mockDb.getShopConfig());
-    setOptionsList(mockDb.getGlobalOptionsList());
+  const refreshAll = async () => {
+    try {
+      const [pList, cfg, optList] = await Promise.all([
+        storeService.getProducts(),
+        storeService.getShopConfig(),
+        storeService.getGlobalOptionsList(),
+      ]);
+      setProducts(pList);
+      setShopConfig(cfg);
+      if (cfg?.pauseReason) {
+        setPauseReasonInput(cfg.pauseReason);
+      }
+      setOptionsList(optList);
+    } catch (err) {
+      console.error('Failed to refresh stock toggle manager:', err);
+    }
   };
 
   useEffect(() => {
+    refreshAll();
     window.addEventListener('bake_sip_product_updated', refreshAll);
     window.addEventListener('bake_sip_config_updated', refreshAll);
     return () => {
@@ -127,85 +140,108 @@ export const StockToggleManager: React.FC = () => {
   // --- ACTIONS ---
 
   // 1. Toggle single product stock
-  const handleToggleProduct = (p: Product) => {
-    const updated = mockDb.toggleProductStatus(p.id);
-    setProducts(mockDb.getProducts());
-    showToast(
-      updated.isActive
-        ? `🟢 Món "${p.name}" đã ĐƯỢC BẬT BÁN LẠI thành công!`
-        : `🔴 Đã BÁO HẾT MÓN "${p.name}" (Khách không thể chọn)!`
-    );
+  const handleToggleProduct = async (p: Product) => {
+    try {
+      const updated = await storeService.toggleProductStatus(p.id);
+      await refreshAll();
+      showToast(
+        updated.isActive
+          ? `🟢 Món "${p.name}" đã ĐƯỢC BẬT BÁN LẠI thành công!`
+          : `🔴 Đã BÁO HẾT MÓN "${p.name}" (Khách không thể chọn)!`
+      );
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // 2. Batch toggle products
-  const handleBatchToggleProducts = (isActive: boolean) => {
+  const handleBatchToggleProducts = async (isActive: boolean) => {
     const categoryLabel = selectedCategory === 'Tất cả' ? 'tất cả các món' : `danh mục "${selectedCategory}"`;
     const actionLabel = isActive ? 'BẬT BÁN LẠI' : 'BÁO HẾT HÀNG TOÀN BỘ';
 
     if (window.confirm(`Bạn có chắc chắn muốn ${actionLabel} cho ${categoryLabel} không?`)) {
-      mockDb.toggleAllProductsStatus(isActive, selectedCategory === 'Tất cả' ? undefined : selectedCategory);
-      setProducts(mockDb.getProducts());
-      showToast(`✓ Đã ${actionLabel.toLowerCase()} cho ${categoryLabel}!`);
+      try {
+        await storeService.toggleAllProductsStatus(isActive, selectedCategory === 'Tất cả' ? undefined : selectedCategory);
+        await refreshAll();
+        showToast(`✓ Đã ${actionLabel.toLowerCase()} cho ${categoryLabel}!`);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
   // 3. Toggle single option / topping
-  const handleToggleOption = (opt: GlobalOptionItem) => {
+  const handleToggleOption = async (opt: GlobalOptionItem) => {
     const nextState = !opt.isAvailable;
-    mockDb.toggleOptionAvailability(opt.id, nextState);
-    setOptionsList(mockDb.getGlobalOptionsList());
-    setProducts(mockDb.getProducts());
-    showToast(
-      nextState
-        ? `🟢 Topping "${opt.name}" đã CÒN HÀNG trở lại!`
-        : `🔴 Đã BÁO HẾT TOPPING "${opt.name}" (Khóa tùy chọn trên tất cả món)!`
-    );
+    try {
+      await storeService.toggleOptionAvailability(opt.id, nextState);
+      await refreshAll();
+      showToast(
+        nextState
+          ? `🟢 Topping "${opt.name}" đã CÒN HÀNG trở lại!`
+          : `🔴 Đã BÁO HẾT TOPPING "${opt.name}" (Khóa tùy chọn trên tất cả món)!`
+      );
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // 4. Batch toggle options
-  const handleBatchToggleOptions = (isAvailable: boolean) => {
+  const handleBatchToggleOptions = async (isAvailable: boolean) => {
     const groupLabel = selectedGroup === 'Tất cả' ? 'tất cả topping & tùy chọn' : `nhóm "${selectedGroup}"`;
     const actionLabel = isAvailable ? 'BẬT CÒN HÀNG' : 'BÁO HẾT TOÀN BỘ';
 
     if (window.confirm(`Bạn có chắc muốn ${actionLabel} cho ${groupLabel} không?`)) {
-      if (selectedGroup === 'Tất cả') {
-        optionsList.forEach((o) => {
-          mockDb.toggleOptionAvailability(o.id, isAvailable);
-        });
-      } else {
-        const found = optionsList.find((o) => o.groupName === selectedGroup);
-        if (found) {
-          mockDb.toggleOptionGroupAvailability(found.groupId, isAvailable);
+      try {
+        if (selectedGroup === 'Tất cả') {
+          for (const o of optionsList) {
+            await storeService.toggleOptionAvailability(o.id, isAvailable);
+          }
+        } else {
+          const found = optionsList.find((o) => o.groupName === selectedGroup);
+          if (found) {
+            await storeService.toggleOptionGroupAvailability(found.groupId, isAvailable);
+          }
         }
+        await refreshAll();
+        showToast(`✓ Đã ${actionLabel.toLowerCase()} cho ${groupLabel}!`);
+      } catch (err) {
+        console.error(err);
       }
-      setOptionsList(mockDb.getGlobalOptionsList());
-      setProducts(mockDb.getProducts());
-      showToast(`✓ Đã ${actionLabel.toLowerCase()} cho ${groupLabel}!`);
     }
   };
 
   // 5. Toggle whole shop open / pause status
-  const handleToggleShopStatus = () => {
+  const handleToggleShopStatus = async () => {
     const nextStatus = !shopConfig.isOpen;
-    if (!nextStatus) {
-      // Tạm nghỉ
-      const updated = mockDb.toggleShopOpenStatus(false, pauseReasonInput.trim());
-      setShopConfig(updated);
-      showToast('⏸️ Tiệm đã chuyển sang trạng thái: TẠM NGHỈ BÁN HÔM NAY!');
-    } else {
-      // Mở lại
-      const updated = mockDb.toggleShopOpenStatus(true, '');
-      setShopConfig(updated);
-      showToast('🎉 Tiệm đã MỞ BÁN NHẬN ĐƠN trở lại bình thường!');
+    try {
+      if (!nextStatus) {
+        // Tạm nghỉ
+        const updated = await storeService.toggleShopOpenStatus(false, pauseReasonInput.trim());
+        setShopConfig(updated);
+        showToast('⏸️ Tiệm đã chuyển sang trạng thái: TẠM NGHỈ BÁN HÔM NAY!');
+      } else {
+        // Mở lại
+        const updated = await storeService.toggleShopOpenStatus(true, '');
+        setShopConfig(updated);
+        showToast('🎉 Tiệm đã MỞ BÁN NHẬN ĐƠN trở lại bình thường!');
+      }
+      await refreshAll();
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleSavePauseReason = (e: React.FormEvent) => {
+  const handleSavePauseReason = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updated = mockDb.updateShopConfig({ pauseReason: pauseReasonInput.trim() });
-    setShopConfig(updated);
-    setIsEditingReason(false);
-    showToast('✓ Đã cập nhật lý do tạm nghỉ cho khách hàng!');
+    try {
+      const updated = await storeService.updateShopConfig({ pauseReason: pauseReasonInput.trim() });
+      setShopConfig(updated);
+      setIsEditingReason(false);
+      showToast('✓ Đã cập nhật lý do tạm nghỉ cho khách hàng!');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (

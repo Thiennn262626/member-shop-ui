@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Voucher } from '../../types';
-import { mockDb } from '../../services/mockDb';
+import { storeService } from '../../services/storeService';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 
 export function VoucherManager() {
@@ -21,14 +21,20 @@ export function VoucherManager() {
   const [usageLimit, setUsageLimit] = useState<number>(100);
   const [isActive, setIsActive] = useState(true);
 
-  const loadData = () => {
-    const list = mockDb.getVouchers();
-    setVouchers(list);
+  const loadData = async () => {
+    try {
+      const list = await storeService.getVouchers();
+      setVouchers(list);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
     loadData();
-    const handleVoucherUpdate = () => loadData();
+    const handleVoucherUpdate = () => {
+      loadData();
+    };
     window.addEventListener('bake_sip_voucher_updated', handleVoucherUpdate);
     return () => {
       window.removeEventListener('bake_sip_voucher_updated', handleVoucherUpdate);
@@ -73,7 +79,7 @@ export function VoucherManager() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -96,7 +102,7 @@ export function VoucherManager() {
 
     try {
       if (editingVoucher) {
-        mockDb.updateVoucher(editingVoucher.id, {
+        await storeService.updateVoucher(editingVoucher.id, {
           code: code.trim().toUpperCase(),
           title: title.trim(),
           discountType,
@@ -109,7 +115,7 @@ export function VoucherManager() {
           isActive,
         });
       } else {
-        mockDb.addVoucher({
+        await storeService.addVoucher({
           code: code.trim().toUpperCase(),
           title: title.trim(),
           discountType,
@@ -123,25 +129,29 @@ export function VoucherManager() {
         });
       }
       setIsModalOpen(false);
-      loadData();
+      await loadData();
     } catch (err: any) {
       setErrorMessage(err.message || 'Lỗi khi lưu mã khuyến mãi');
     }
   };
 
-  const handleToggleStatus = (id: string) => {
+  const handleToggleStatus = async (id: string) => {
     try {
-      mockDb.toggleVoucherStatus(id);
-      loadData();
+      await storeService.toggleVoucherStatus(id);
+      await loadData();
     } catch (err: any) {
       alert(err.message);
     }
   };
 
-  const handleDelete = (id: string, codeName: string) => {
+  const handleDelete = async (id: string, codeName: string) => {
     if (confirm(`Bạn có chắc chắn muốn xóa mã giảm giá "${codeName}"?`)) {
-      mockDb.deleteVoucher(id);
-      loadData();
+      try {
+        await storeService.deleteVoucher(id);
+        await loadData();
+      } catch (err: any) {
+        alert(err.message);
+      }
     }
   };
 

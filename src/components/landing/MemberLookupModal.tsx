@@ -17,7 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { mockDb, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../../services/mockDb';
+import { storeService, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../../services/storeService';
 import type { Customer, Order, OrderStatus, PointTransaction } from '../../types';
 import { formatCurrency, formatDate, formatPhone } from '../../utils/format';
 
@@ -50,27 +50,27 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
     const clean = targetPhone.trim().replace(/\D/g, '');
     if (!clean) return;
 
-    const customer = mockDb.findCustomerByPhone(clean);
-    const orders = mockDb.getOrdersByPhone(clean);
+    storeService.getCustomerFullLookup(clean).then((res) => {
+      if (res && res.customer) {
+        setSearchedCustomer(res.customer);
+        setCustomerOrders(res.orders || []);
+        setTransactions(res.transactions || []);
+        setHasSearched(true);
 
-    setSearchedCustomer(customer || null);
-    setCustomerOrders(orders);
-    setHasSearched(true);
-
-    if (customer) {
-      const txs = mockDb.getTransactions(customer.id);
-      setTransactions(txs);
-
-      if (customer.tier === 'DIAMOND' || customer.tier === 'GOLD') {
-        confetti({
-          particleCount: 40,
-          spread: 50,
-          origin: { y: 0.5 },
-        });
+        if (res.customer.tier === 'DIAMOND' || res.customer.tier === 'GOLD') {
+          confetti({
+            particleCount: 40,
+            spread: 50,
+            origin: { y: 0.5 },
+          });
+        }
+      } else {
+        setSearchedCustomer(null);
+        setCustomerOrders([]);
+        setTransactions([]);
+        setHasSearched(true);
       }
-    } else {
-      setTransactions([]);
-    }
+    });
   }, [phoneNumber]);
 
   // Khởi tạo tra cứu nếu có initialPhone
