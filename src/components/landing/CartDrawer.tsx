@@ -282,7 +282,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
 
     // Validate address if delivery
     if (fulfillmentType === 'delivery' && !deliveryAddress.trim()) {
-      setErrorMessage('Vui lòng nhập địa chỉ giao hàng cụ thể để shipper giao bánh.');
+      setErrorMessage('Vui lòng nhập địa chỉ giao hàng cụ thể để shipper giao món.');
       return;
     }
 
@@ -664,7 +664,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
                               className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs text-stone-900 focus:outline-none focus:border-amber-600"
                             />
                             <p className="text-[10px] text-stone-500 mt-1">
-                              Tiệm sẽ căn giờ nướng bánh mới để giao đúng thời gian bạn chọn.
+                              Tiệm sẽ căn giờ trộn bánh mới để giao đúng thời gian bạn chọn.
                             </p>
                           </div>
                         )}

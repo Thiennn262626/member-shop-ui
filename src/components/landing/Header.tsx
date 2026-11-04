@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel,
               className="relative inline-flex items-center gap-1 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs sm:text-sm font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
-              <span className="hidden sm:inline">Giỏ Bánh</span>
+              <span className="hidden sm:inline">Giỏ Hàng</span>
               {totalItems > 0 && (
                 <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] sm:text-[11px] font-bold leading-none text-stone-900 bg-amber-400 rounded-full font-mono">
                   {totalItems}

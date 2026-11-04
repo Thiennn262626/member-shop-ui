@@ -11,7 +11,7 @@ export const Footer: React.FC = () => {
           <div className="md:col-span-5 space-y-3">
             <div className="flex items-center gap-2.5 text-white">
               <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 flex items-center justify-center font-bold text-lg">
-                🥐
+                🌶️
               </div>
               <div>
                 <span className="font-serif text-lg font-bold tracking-tight block leading-none">
@@ -23,7 +23,7 @@ export const Footer: React.FC = () => {
               </div>
             </div>
             <p className="text-stone-400 max-w-sm leading-relaxed text-xs">
-              Tiệm bánh nướng thủ công & đồ uống tươi phong cách trẻ trung. Tích lũy điểm thưởng không giới hạn trên từng đơn hàng chốt nhanh qua Zalo.
+              Tiệm bánh tráng trộn phơi sương Tây Ninh & đồ ăn vặt chuẩn vị Sài Gòn. Tích lũy điểm thưởng không giới hạn trên từng đơn hàng chốt nhanh qua Zalo.
             </p>
           </div>
 
@@ -42,11 +42,11 @@ export const Footer: React.FC = () => {
             </div>
             <div className="flex items-center gap-2 text-stone-300">
               <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Giờ mở lò: <strong>07:00 - 22:00 (Mỗi ngày)</strong></span>
+              <span>Giờ mở cửa: <strong>09:00 - 22:00 (Mỗi ngày)</strong></span>
             </div>
             <div className="flex items-center gap-2 text-stone-300">
               <MessageSquare className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>Zalo Đặt Bánh: <strong>{SHOP_CONFIG.zaloPhone}</strong></span>
+              <span>Zalo Đặt Hàng: <strong>{SHOP_CONFIG.zaloPhone}</strong></span>
             </div>
           </div>
 

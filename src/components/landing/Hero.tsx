@@ -180,7 +180,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                     3
                   </div>
                   <div>
-                    <div className="font-bold text-stone-900 text-xs">Trừ tiền hoặc đổi bánh xịn</div>
+                    <div className="font-bold text-stone-900 text-xs">Trừ tiền hoặc đổi topping/bánh xịn</div>
                     <p className="text-[11px] text-stone-600 mt-0.5">
                       Lần tới mua chỉ cần bảo tiệm: "Trừ điểm giúp mình nha!", đơn hàng tự động giảm giá ngay.
                     </p>
@@ -256,9 +256,8 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                     <span>Chọn Món & Tùy Biến Khẩu Vị</span>
                   </h4>
                   <p className="text-stone-600 leading-relaxed">
-                    Lướt danh mục bánh nướng & trà tươi. Bấm vào món để tùy chọn <strong>Size M / L</strong>, 
-                    chỉnh mức <strong>độ ngọt (0% – 100%)</strong>, <strong>lượng đá</strong> (hoặc uống nóng), 
-                    chọn thêm <strong>topping</strong> (trân châu, kem cheese) và ghi chú riêng cho tiệm.
+                    Lướt danh mục bánh tráng & ăn vặt. Bấm vào món để tùy chọn <strong>mức độ cay (Cay vừa, Không cay, Siêu cay)</strong>, 
+                    chọn thêm <strong>topping</strong> (trứng cút lòng đào, khô bò đen, sốt bơ béo, tép sấy giòn...) và ghi chú riêng cho tiệm (để sốt riêng, không rau răm...).
                   </p>
                 </div>
               </div>
@@ -275,10 +274,10 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                   </h4>
                   <p className="text-stone-600 leading-relaxed">
                     Chọn <strong>Nhận tại quán (0đ phí ship)</strong> hoặc <strong>Giao hàng tận nơi (khu vực 10km)</strong>. 
-                    Bạn có thể chọn <strong>giao ngay</strong> hoặc <strong>hẹn ngày & giờ cụ thể</strong> để tiệm nướng bánh nóng đúng giờ tiệc/họp.
+                    Bạn có thể chọn <strong>giao ngay</strong> hoặc <strong>hẹn ngày & giờ cụ thể</strong> để tiệm chuẩn bị bánh tráng tươi ngon đúng giờ tiệc/họp.
                   </p>
                   <div className="inline-block mt-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-medium text-[11px] border border-emerald-100">
-                    🛵 <em>Đồng giá ship thông minh: Đơn từ 200.000đ được Miễn phí giao hàng (Freeship)!</em>
+                    🛵 <em>Đồng giá ship thông minh: Đơn từ 100.000đ được Miễn phí giao hàng (Freeship)!</em>
                   </div>
                 </div>
               </div>
@@ -310,7 +309,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                     <span>Bấm Gửi Đơn – Tiệm Soạn Zalo & VietQR Tức Thì</span>
                   </h4>
                   <p className="text-stone-600 leading-relaxed">
-                    Chọn thanh toán <strong>Quét mã VietQR động</strong> (tự điền số tiền và mã đơn chuẩn xác) hoặc <strong>Tiền mặt (COD)</strong> khi nhận bánh. 
+                    Chọn thanh toán <strong>Quét mã VietQR động</strong> (tự điền số tiền và mã đơn chuẩn xác) hoặc <strong>Tiền mặt (COD)</strong> khi nhận bánh tráng. 
                     Hệ thống sẽ cấp mã đơn <span className="font-mono font-bold text-amber-800">#BS-xxxx</span> và hỗ trợ bạn gửi tin nhắn trực tiếp qua Zalo tiệm để xác nhận nhanh nhất!
                   </p>
                 </div>
@@ -320,10 +319,10 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
               <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/70 text-xs text-stone-700 space-y-1">
                 <div className="font-bold text-amber-900 flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Theo Dõi Tiến Trình Làm Bánh & Pha Chế:</span>
+                  <span>Theo Dõi Tiến Trình Trộn Bánh & Giao Hàng:</span>
                 </div>
                 <p className="text-[11px] text-stone-600">
-                  Bạn có thể bấm nút <strong>"Tra Cứu Đơn Hàng"</strong> ở đầu trang bất cứ lúc nào để xem trực tiếp bếp đang nướng bánh hay tài xế đang giao đến nhé!
+                  Bạn có thể bấm nút <strong>"Tra Cứu Đơn Hàng"</strong> ở đầu trang bất cứ lúc nào để xem trực tiếp tiệm đang trộn bánh hay tài xế đang giao đến nhé!
                 </p>
               </div>
             </div>

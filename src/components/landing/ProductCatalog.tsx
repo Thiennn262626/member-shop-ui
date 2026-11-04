@@ -130,7 +130,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
             <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Tìm món bánh, nước..."
+              placeholder="Tìm món bánh tráng..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 sm:py-2.5 bg-white border border-stone-300 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 shadow-xs transition-all"
@@ -307,7 +307,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                               ? 'bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-xs'
                               : 'bg-stone-900 hover:bg-stone-800 text-amber-300 shadow-xs'
                           }`}
-                          title="Tùy chọn size, topping & ghi chú"
+                          title="Tùy chọn độ cay, topping & ghi chú"
                         >
                           <SlidersHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           <span>
@@ -354,7 +354,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                 </div>
                 <div className="truncate">
                   <div className="text-xs text-stone-300 truncate">
-                    {lastAddedName ? `Vừa thêm: ${lastAddedName}` : `Đã chọn ${totalItems} món bánh & nước`}
+                    {lastAddedName ? `Vừa thêm: ${lastAddedName}` : `Đã chọn ${totalItems} phần bánh tráng`}
                   </div>
                   <div className="text-sm font-extrabold text-amber-300 font-mono">
                     {formatCurrency(totalAmount)}

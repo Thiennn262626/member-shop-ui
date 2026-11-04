@@ -9,11 +9,11 @@ interface LuckyWheelModalProps {
 
 const REWARDS = [
   { id: 1, label: '+10 Điểm Hội Viên', code: 'BONUS10P', color: 'bg-amber-100 text-amber-900 border-amber-300' },
-  { id: 2, label: 'Voucher Giảm 15k', code: 'BANH15K', color: 'bg-rose-100 text-rose-900 border-rose-300' },
-  { id: 3, label: 'Tặng 1 Ly Trà Đào', code: 'FREETRADAO', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
+  { id: 2, label: 'Voucher Giảm 5k', code: 'BANHTRANG5K', color: 'bg-rose-100 text-rose-900 border-rose-300' },
+  { id: 3, label: 'Tặng Thêm 3 Trứng Cút', code: 'FREECUTCUT', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
   { id: 4, label: '+20 Điểm Thưởng', code: 'BONUS20P', color: 'bg-purple-100 text-purple-900 border-purple-300' },
   { id: 5, label: 'Freeship Đơn Zalo', code: 'FREESHIP', color: 'bg-sky-100 text-sky-900 border-sky-300' },
-  { id: 6, label: 'Giảm 10% Đơn Bánh', code: 'DISCOUNT10', color: 'bg-yellow-100 text-yellow-900 border-yellow-300' },
+  { id: 6, label: 'Giảm 10% Bánh Tráng', code: 'ANVAT10', color: 'bg-yellow-100 text-yellow-900 border-yellow-300' },
 ];
 
 export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({ isOpen, onClose }) => {

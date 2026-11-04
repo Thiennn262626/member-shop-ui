@@ -28,7 +28,7 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
   };
 
   const handleSendToZalo = () => {
-    const text = `Chào tiệm ${SHOP_CONFIG.shopName}! Mình vừa đặt đơn hàng mã ${order.orderCode} (${order.customerName} - ${order.customerPhone}). Tiệm kiểm tra và xác nhận làm bánh giúp mình nhé! Cảm ơn tiệm!`;
+    const text = `Chào tiệm ${SHOP_CONFIG.shopName}! Mình vừa đặt đơn hàng mã ${order.orderCode} (${order.customerName} - ${order.customerPhone}). Tiệm kiểm tra và xác nhận trộn bánh tráng giúp mình nhé! Cảm ơn tiệm!`;
     const encoded = encodeURIComponent(text);
     const url = `https://zalo.me/${SHOP_CONFIG.zaloPhone}?text=${encoded}`;
     window.open(url, '_blank');
@@ -50,7 +50,7 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
               Đã Lưu Đơn Hàng Tạm!
             </h3>
             <p className="text-xs sm:text-sm text-stone-600">
-              Gửi mã đơn bên dưới sang Zalo để tiệm xác nhận & làm bánh ngay nhé.
+              Gửi mã đơn bên dưới sang Zalo để tiệm xác nhận & trộn bánh tráng ngay nhé.
             </p>
           </div>
 
@@ -85,7 +85,7 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-stone-500">Số lượng:</span>
-              <span className="text-stone-900">{order.items.length} món bánh & nước</span>
+              <span className="text-stone-900">{order.items.length} phần bánh tráng</span>
             </div>
             <div className="flex items-center justify-between border-t border-stone-200 pt-2 font-bold text-stone-900">
               <span>Tổng thanh toán:</span>
