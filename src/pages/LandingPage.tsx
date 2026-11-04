@@ -9,38 +9,33 @@ import { LuckyWheelModal } from '../components/landing/LuckyWheelModal';
 import { LiveActivityToast } from '../components/landing/LiveActivityToast';
 import { MobileBottomBar } from '../components/landing/MobileBottomBar';
 import { Footer } from '../components/landing/Footer';
-import { storeService } from '../services/storeService';
-import type { Order, Product } from '../types';
+import { useShopStore } from '../stores/useShopStore';
+import type { Order } from '../types';
 
 interface LandingPageProps {
   onOpenAdmin: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAdmin }) => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const products = useShopStore((state) => state.products);
+  const fetchProducts = useShopStore((state) => state.fetchProducts);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [lookupPhone, setLookupPhone] = useState('');
   const [isWheelOpen, setIsWheelOpen] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
-  // Tải danh sách sản phẩm qua storeService (hỗ trợ cả Mock Demo và Real API)
+  // Tải danh sách sản phẩm qua Zustand store (chỉ fetch 1 lần, không gọi lại khi chuyển tab)
   useEffect(() => {
-    let isMounted = true;
-    storeService.getProducts().then((data) => {
-      if (isMounted && data) setProducts(data);
-    });
+    fetchProducts();
 
     const handleProductChange = () => {
-      storeService.getProducts().then((data) => {
-        if (isMounted && data) setProducts(data);
-      });
+      fetchProducts(true);
     };
     window.addEventListener('bake_sip_product_updated', handleProductChange);
     return () => {
-      isMounted = false;
       window.removeEventListener('bake_sip_product_updated', handleProductChange);
     };
-  }, []);
+  }, [fetchProducts]);
 
   const scrollToCatalog = () => {
     const el = document.getElementById('catalog-section');

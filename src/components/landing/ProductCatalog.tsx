@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Search, Sparkles, Star, SlidersHorizontal, ShoppingBag, Store, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { storeService, SHOP_CONFIG } from '../../services/storeService';
-import type { Product, SelectedOptionChoice, ShopConfig } from '../../types';
+import { useShopStore } from '../../stores/useShopStore';
+import { SHOP_CONFIG } from '../../services/storeService';
+import type { Product, SelectedOptionChoice } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { ItemCustomizationModal } from './ItemCustomizationModal';
 
@@ -20,30 +21,16 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
     lastAddedName,
   } = useCart();
 
-  const [shopConfig, setShopConfig] = useState<ShopConfig>(SHOP_CONFIG);
+  const shopConfig = useShopStore((state) => state.shopConfig);
+  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
   const [animatingProductId, setAnimatingProductId] = useState<string | null>(null);
 
-  // Sync shop config when admin toggles open/pause
   useEffect(() => {
-    let isMounted = true;
-    storeService.getShopConfig().then((cfg) => {
-      if (isMounted && cfg) setShopConfig(cfg);
-    });
-
-    const handleConfig = () => {
-      storeService.getShopConfig().then((cfg) => {
-        if (isMounted && cfg) setShopConfig(cfg);
-      });
-    };
-    window.addEventListener('bake_sip_config_updated', handleConfig);
-    return () => {
-      isMounted = false;
-      window.removeEventListener('bake_sip_config_updated', handleConfig);
-    };
-  }, []);
+    fetchShopConfig();
+  }, [fetchShopConfig]);
 
   const categories = useMemo(() => {
     const list = ['Tất cả'];

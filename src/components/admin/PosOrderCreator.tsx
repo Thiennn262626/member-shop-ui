@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { storeService, SHOP_CONFIG, TIER_CONFIG } from '../../services/storeService';
+import { useShopStore } from '../../stores/useShopStore';
 import type { Customer, Order, OrderItem, Product, SelectedOptionChoice } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { ItemCustomizationModal } from '../landing/ItemCustomizationModal';
@@ -40,10 +41,13 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
   onSwitchToOrdersList,
   onSwitchToStockManager,
 }) => {
-  // Products & Categories
-  const [products, setProducts] = useState<Product[]>([]);
+  // Products & Categories từ Zustand Store
+  const products = useShopStore((state) => state.products);
+  const shopConfig = useShopStore((state) => state.shopConfig);
+  const fetchProducts = useShopStore((state) => state.fetchProducts);
+  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
+
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [productSearch, setProductSearch] = useState<string>('');
@@ -51,45 +55,27 @@ export const PosOrderCreator: React.FC<PosOrderCreatorProps> = ({
   // Lắng nghe cập nhật sản phẩm & khách hàng Realtime
   useEffect(() => {
     let isMounted = true;
-    const loadData = async () => {
-      try {
-        const [pList, cList, cfg] = await Promise.all([
-          storeService.getProducts(),
-          storeService.getCustomers(),
-          storeService.getShopConfig(),
-        ]);
-        if (isMounted) {
-          if (pList) setProducts(pList);
-          if (cList) setCustomers(cList);
-          if (cfg) setShopConfig(cfg);
-        }
-      } catch (err) {
-        console.error('Failed to load POS data:', err);
-      }
-    };
-
-    loadData();
+    fetchShopConfig();
+    fetchProducts();
+    storeService.getCustomers().then((cList) => {
+      if (isMounted && cList) setCustomers(cList);
+    });
 
     const handleProductChange = () => {
-      storeService.getProducts().then((p) => isMounted && setProducts(p));
+      fetchProducts(true);
     };
     const handleCustomerChange = () => {
       storeService.getCustomers().then((c) => isMounted && setCustomers(c));
     };
-    const handleConfigChange = () => {
-      storeService.getShopConfig().then((cfg) => isMounted && setShopConfig(cfg));
-    };
 
     window.addEventListener('bake_sip_product_updated', handleProductChange);
     window.addEventListener('bake_sip_order_updated', handleCustomerChange);
-    window.addEventListener('bake_sip_config_updated', handleConfigChange);
     return () => {
       isMounted = false;
       window.removeEventListener('bake_sip_product_updated', handleProductChange);
       window.removeEventListener('bake_sip_order_updated', handleCustomerChange);
-      window.removeEventListener('bake_sip_config_updated', handleConfigChange);
     };
-  }, []);
+  }, [fetchShopConfig, fetchProducts]);
 
   // Cart / Bill State
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);

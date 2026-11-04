@@ -22,6 +22,7 @@ import {
 import confetti from 'canvas-confetti';
 import { useCart } from '../../context/CartContext';
 import { storeService, SHOP_CONFIG, TIER_CONFIG, calculateShippingFee } from '../../services/storeService';
+import { useShopStore } from '../../stores/useShopStore';
 import type { Customer, Order, Voucher } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
@@ -40,7 +41,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   const { items, isCartOpen, closeCart, updateQuantity, removeFromCart, totalAmount, estimatedPoints, clearCart } =
     useCart();
 
-  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
+  const shopConfig = useShopStore((state) => state.shopConfig);
+  const rawVouchers = useShopStore((state) => state.vouchers);
+  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
+  const fetchVouchers = useShopStore((state) => state.fetchVouchers);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -62,38 +66,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
   const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
   const [voucherError, setVoucherError] = useState<string | null>(null);
-  const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]);
+  const availableVouchers = useMemo(() => rawVouchers.filter((v) => v.isActive), [rawVouchers]);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Load shop config & active vouchers
+  // Sync shop config & vouchers từ Zustand store (chỉ fetch nếu chưa có, không gọi lại khi chuyển tab)
   useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      try {
-        const [cfg, vouchers] = await Promise.all([
-          storeService.getShopConfig(),
-          storeService.getVouchers(),
-        ]);
-        if (isMounted) {
-          if (cfg) setShopConfig(cfg);
-          if (vouchers) setAvailableVouchers(vouchers.filter((v) => v.isActive));
-        }
-      } catch (err) {
-        console.error('Failed to load shop config / vouchers:', err);
-      }
-    };
-
-    loadData();
-
-    window.addEventListener('bake_sip_config_updated', loadData);
-    window.addEventListener('bake_sip_voucher_updated', loadData);
-    return () => {
-      isMounted = false;
-      window.removeEventListener('bake_sip_config_updated', loadData);
-      window.removeEventListener('bake_sip_voucher_updated', loadData);
-    };
-  }, []);
+    fetchShopConfig();
+    fetchVouchers();
+  }, [fetchShopConfig, fetchVouchers]);
 
   // Dọn dẹp các món đã chọn đổi điểm nếu món đó bị xóa khỏi giỏ
   useEffect(() => {

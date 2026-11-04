@@ -11,13 +11,17 @@ import {
   Flame,
   UtensilsCrossed,
 } from 'lucide-react';
-import { storeService, SHOP_CONFIG } from '../../services/storeService';
-import type { GlobalOptionItem, Product, ShopConfig } from '../../types';
+import { storeService } from '../../services/storeService';
+import { useShopStore } from '../../stores/useShopStore';
+import type { GlobalOptionItem, Product } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
 export const StockToggleManager: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [shopConfig, setShopConfig] = useState<ShopConfig>(SHOP_CONFIG);
+  const products = useShopStore((state) => state.products);
+  const shopConfig = useShopStore((state) => state.shopConfig);
+  const setShopConfig = useShopStore((state) => state.setShopConfig);
+  const fetchProducts = useShopStore((state) => state.fetchProducts);
+  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
   const [optionsList, setOptionsList] = useState<GlobalOptionItem[]>([]);
 
   // Active sub-tab: 'products' | 'toppings'
@@ -50,17 +54,12 @@ export const StockToggleManager: React.FC = () => {
   // Sync with Realtime Events
   const refreshAll = async () => {
     try {
-      const [pList, cfg, optList] = await Promise.all([
-        storeService.getProducts(),
-        storeService.getShopConfig(),
-        storeService.getGlobalOptionsList(),
-      ]);
-      setProducts(pList);
-      setShopConfig(cfg);
-      if (cfg?.pauseReason) {
-        setPauseReasonInput(cfg.pauseReason);
-      }
+      await Promise.all([fetchProducts(), fetchShopConfig()]);
+      const optList = await storeService.getGlobalOptionsList();
       setOptionsList(optList);
+      if (shopConfig?.pauseReason) {
+        setPauseReasonInput(shopConfig.pauseReason);
+      }
     } catch (err) {
       console.error('Failed to refresh stock toggle manager:', err);
     }
@@ -68,13 +67,18 @@ export const StockToggleManager: React.FC = () => {
 
   useEffect(() => {
     refreshAll();
-    window.addEventListener('bake_sip_product_updated', refreshAll);
-    window.addEventListener('bake_sip_config_updated', refreshAll);
-    return () => {
-      window.removeEventListener('bake_sip_product_updated', refreshAll);
-      window.removeEventListener('bake_sip_config_updated', refreshAll);
+    const handleForceRefresh = () => {
+      fetchProducts(true);
+      fetchShopConfig(true);
+      storeService.getGlobalOptionsList().then(setOptionsList);
     };
-  }, []);
+    window.addEventListener('bake_sip_product_updated', handleForceRefresh);
+    window.addEventListener('bake_sip_config_updated', handleForceRefresh);
+    return () => {
+      window.removeEventListener('bake_sip_product_updated', handleForceRefresh);
+      window.removeEventListener('bake_sip_config_updated', handleForceRefresh);
+    };
+  }, [fetchProducts, fetchShopConfig]);
 
   // --- STATS METRICS ---
   const activeProductsCount = useMemo(() => products.filter((p) => p.isActive).length, [products]);

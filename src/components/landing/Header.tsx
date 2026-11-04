@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { ShoppingBag, CreditCard, Store, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { storeService, SHOP_CONFIG } from '../../services/storeService';
+import { useShopStore } from '../../stores/useShopStore';
 
 interface HeaderProps {
   onOpenMemberLookup: () => void;
@@ -11,25 +11,12 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel, onOpenAdmin }) => {
   const { totalItems, openCart } = useCart();
-  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
+  const shopConfig = useShopStore((state) => state.shopConfig);
+  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
 
   useEffect(() => {
-    let isMounted = true;
-    storeService.getShopConfig().then((cfg) => {
-      if (isMounted && cfg) setShopConfig(cfg);
-    });
-
-    const handleUpdate = () => {
-      storeService.getShopConfig().then((cfg) => {
-        if (isMounted && cfg) setShopConfig(cfg);
-      });
-    };
-    window.addEventListener('bake_sip_config_updated', handleUpdate);
-    return () => {
-      isMounted = false;
-      window.removeEventListener('bake_sip_config_updated', handleUpdate);
-    };
-  }, []);
+    fetchShopConfig();
+  }, [fetchShopConfig]);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">

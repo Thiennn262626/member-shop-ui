@@ -1,4 +1,5 @@
 import { apiStoreService } from './api/apiStoreService';
+import { useShopStore } from '../stores/useShopStore';
 import {
   SHOP_CONFIG,
   TIER_CONFIG,
@@ -66,28 +67,41 @@ export const calculateShippingFee = (
  */
 class StoreService {
   // --- PRODUCTS ---
-  async getProducts(onlyActive: boolean = false): Promise<Product[]> {
-    return await apiStoreService.getProducts(onlyActive);
+  async getProducts(onlyActive: boolean = false, force: boolean = false): Promise<Product[]> {
+    const list = await useShopStore.getState().fetchProducts(force);
+    if (onlyActive) {
+      return list.filter((p) => p.isActive);
+    }
+    return list;
   }
 
   async getProductById(id: string): Promise<Product | undefined> {
+    const cached = useShopStore.getState().products.find((p) => p.id === id);
+    if (cached) return cached;
     return await apiStoreService.getProductById(id);
   }
 
   async addProduct(payload: Omit<Product, 'id' | 'updatedAt'>): Promise<Product> {
-    return await apiStoreService.addProduct(payload);
+    const res = await apiStoreService.addProduct(payload);
+    await useShopStore.getState().fetchProducts(true);
+    return res;
   }
 
   async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
-    return await apiStoreService.updateProduct(id, updates);
+    const res = await apiStoreService.updateProduct(id, updates);
+    await useShopStore.getState().fetchProducts(true);
+    return res;
   }
 
   async toggleProductStatus(id: string): Promise<Product> {
-    return await apiStoreService.toggleProductStatus(id);
+    const res = await apiStoreService.toggleProductStatus(id);
+    await useShopStore.getState().fetchProducts(true);
+    return res;
   }
 
   async deleteProduct(id: string): Promise<void> {
     await apiStoreService.deleteProduct(id);
+    await useShopStore.getState().fetchProducts(true);
   }
 
   async getGlobalOptionsList(): Promise<GlobalOptionItem[]> {
@@ -170,7 +184,7 @@ class StoreService {
   }
 
   async toggleShopOpenStatus(isOpen: boolean, pauseReason?: string): Promise<ShopConfig> {
-    return await apiStoreService.updateShopConfig({
+    return await useShopStore.getState().updateShopConfig({
       isOpen,
       pauseReason: pauseReason !== undefined
         ? pauseReason
@@ -181,12 +195,12 @@ class StoreService {
   }
 
   // --- CONFIG ---
-  async getShopConfig(): Promise<ShopConfig> {
-    return await apiStoreService.getShopConfig();
+  async getShopConfig(force: boolean = false): Promise<ShopConfig> {
+    return await useShopStore.getState().fetchShopConfig(force);
   }
 
   async updateShopConfig(updates: Partial<ShopConfig>): Promise<ShopConfig> {
-    return await apiStoreService.updateShopConfig(updates);
+    return await useShopStore.getState().updateShopConfig(updates);
   }
 
   // --- ORDERS ---
@@ -244,8 +258,8 @@ class StoreService {
   }
 
   // --- VOUCHERS ---
-  async getVouchers(): Promise<Voucher[]> {
-    return await apiStoreService.getVouchers();
+  async getVouchers(force: boolean = false): Promise<Voucher[]> {
+    return await useShopStore.getState().fetchVouchers(force);
   }
 
   async validateAndCalculateVoucher(code: string, subTotal: number): Promise<VoucherValidationResult> {
@@ -253,22 +267,29 @@ class StoreService {
   }
 
   async addVoucher(payload: any): Promise<Voucher> {
-    return await apiStoreService.addVoucher(payload);
+    const res = await apiStoreService.addVoucher(payload);
+    await useShopStore.getState().fetchVouchers(true);
+    return res;
   }
 
   async updateVoucher(id: string, updates: Partial<Voucher>): Promise<Voucher> {
-    return await apiStoreService.updateVoucher(id, updates);
+    const res = await apiStoreService.updateVoucher(id, updates);
+    await useShopStore.getState().fetchVouchers(true);
+    return res;
   }
 
   async deleteVoucher(id: string): Promise<void> {
     await apiStoreService.deleteVoucher(id);
+    await useShopStore.getState().fetchVouchers(true);
   }
 
   async toggleVoucherStatus(id: string): Promise<Voucher> {
     const vouchers = await this.getVouchers();
     const target = vouchers.find((v) => v.id === id);
     if (!target) throw new Error('Voucher không tồn tại');
-    return await apiStoreService.updateVoucher(id, { isActive: !target.isActive });
+    const res = await apiStoreService.updateVoucher(id, { isActive: !target.isActive });
+    await useShopStore.getState().fetchVouchers(true);
+    return res;
   }
 
   // --- SHIFTS ---

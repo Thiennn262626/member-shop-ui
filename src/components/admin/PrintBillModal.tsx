@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Order } from '../../types';
 import { formatCurrency, formatDateTime } from '../../utils/format';
-import { storeService, SHOP_CONFIG } from '../../services/storeService';
+import { useShopStore } from '../../stores/useShopStore';
 
 interface PrintBillModalProps {
   order: Order;
@@ -10,17 +10,7 @@ interface PrintBillModalProps {
 
 export function PrintBillModal({ order, onClose }: PrintBillModalProps) {
   const [activeTab, setActiveTab] = useState<'bill' | 'stickers'>('bill');
-  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
-
-  useEffect(() => {
-    let isMounted = true;
-    storeService.getShopConfig().then((cfg) => {
-      if (isMounted && cfg) setShopConfig(cfg);
-    }).catch(console.error);
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const shopConfig = useShopStore((state) => state.shopConfig);
 
   // Tách từng sản phẩm thành các tem nhãn riêng biệt (1 món số lượng N -> N tem)
   const stickerItems: Array<{

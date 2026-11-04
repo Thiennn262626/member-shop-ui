@@ -17,7 +17,8 @@ import {
   AlertCircle,
   Gift,
 } from 'lucide-react';
-import { storeService, SHOP_CONFIG, OPTION_PRESETS } from '../../services/storeService';
+import { storeService, OPTION_PRESETS } from '../../services/storeService';
+import { useShopStore } from '../../stores/useShopStore';
 import type { AdminRole, ItemOptionGroup, Product } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
@@ -96,8 +97,12 @@ interface ProductManagerProps {
 
 export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owner' }) => {
   const isCashier = userRole === 'cashier';
-  const [products, setProducts] = useState<Product[]>([]);
-  const [shopConfig, setShopConfig] = useState(SHOP_CONFIG);
+  const products = useShopStore((state) => state.products);
+  const setProducts = useShopStore((state) => state.setProducts);
+  const shopConfig = useShopStore((state) => state.shopConfig);
+  const fetchProducts = useShopStore((state) => state.fetchProducts);
+  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('Tất cả');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -123,41 +128,20 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   const [formOptionGroups, setFormOptionGroups] = useState<ItemOptionGroup[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Lắng nghe cập nhật sản phẩm Realtime
+  // Lắng nghe cập nhật sản phẩm Realtime qua Zustand store
   useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      try {
-        const [pList, cfg] = await Promise.all([
-          storeService.getProducts(),
-          storeService.getShopConfig(),
-        ]);
-        if (isMounted) {
-          if (pList) setProducts(pList);
-          if (cfg) setShopConfig(cfg);
-        }
-      } catch (err) {
-        console.error('Failed to load products/config:', err);
-      }
-    };
-
-    loadData();
+    fetchProducts();
+    fetchShopConfig();
 
     const handleProductUpdate = () => {
-      storeService.getProducts().then((p) => isMounted && setProducts(p));
-    };
-    const handleConfigUpdate = () => {
-      storeService.getShopConfig().then((cfg) => isMounted && setShopConfig(cfg));
+      fetchProducts(true);
     };
 
     window.addEventListener('bake_sip_product_updated', handleProductUpdate);
-    window.addEventListener('bake_sip_config_updated', handleConfigUpdate);
     return () => {
-      isMounted = false;
       window.removeEventListener('bake_sip_product_updated', handleProductUpdate);
-      window.removeEventListener('bake_sip_config_updated', handleConfigUpdate);
     };
-  }, []);
+  }, [fetchProducts, fetchShopConfig]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
