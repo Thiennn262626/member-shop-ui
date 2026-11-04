@@ -43,7 +43,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
 
   const shopConfig = useShopStore((state) => state.shopConfig);
   const rawVouchers = useShopStore((state) => state.vouchers);
-  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
   const fetchVouchers = useShopStore((state) => state.fetchVouchers);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -70,11 +69,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Sync shop config & vouchers từ Zustand store (chỉ fetch nếu chưa có, không gọi lại khi chuyển tab)
+  // Sync vouchers từ Zustand store (chỉ fetch nếu chưa có)
   useEffect(() => {
-    fetchShopConfig();
     fetchVouchers();
-  }, [fetchShopConfig, fetchVouchers]);
+  }, [fetchVouchers]);
 
   // Dọn dẹp các món đã chọn đổi điểm nếu món đó bị xóa khỏi giỏ
   useEffect(() => {

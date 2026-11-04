@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { ShoppingBag, CreditCard, Store, Gift } from 'lucide-react';
+import React from 'react';
+import { ShoppingBag, CreditCard, Store, Gift, Award } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useShopStore } from '../../stores/useShopStore';
 
@@ -7,16 +7,17 @@ interface HeaderProps {
   onOpenMemberLookup: () => void;
   onOpenWheel: () => void;
   onOpenAdmin: () => void;
+  onOpenPolicy?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel, onOpenAdmin }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onOpenMemberLookup,
+  onOpenWheel,
+  onOpenAdmin,
+  onOpenPolicy,
+}) => {
   const { totalItems, openCart } = useCart();
   const shopConfig = useShopStore((state) => state.shopConfig);
-  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
-
-  useEffect(() => {
-    fetchShopConfig();
-  }, [fetchShopConfig]);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">
@@ -53,6 +54,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel,
 
           {/* Quick Actions */}
           <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+            {/* Nút Chính Sách Hội Viên */}
+            {onOpenPolicy && (
+              <button
+                type="button"
+                onClick={onOpenPolicy}
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-stone-700 hover:text-amber-800 hover:bg-amber-50 text-xs sm:text-sm font-semibold transition-all cursor-pointer"
+                title="Xem bảng quyền lợi 4 hạng thẻ & hoàn tiền"
+              >
+                <Award className="w-4 h-4 text-amber-600" />
+                <span>Chính Sách</span>
+              </button>
+            )}
+
             {/* Nút Vòng quay săn quà (Ẩn trên mobile vì đã có ở thanh đáy) */}
             <button
               onClick={onOpenWheel}

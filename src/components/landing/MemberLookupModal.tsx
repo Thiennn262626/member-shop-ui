@@ -753,6 +753,29 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
                           </div>
                         )}
 
+                        {/* Quyền lợi hạng hội viên hiện tại */}
+                        {currentTierInfo && (
+                          <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-3.5 space-y-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Quyền lợi của bạn ({currentTierInfo.label}):</span>
+                              </span>
+                              <span className="text-[10px] font-extrabold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                                x{currentTierInfo.pointMultiplier} Điểm thưởng
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-stone-700">
+                              {currentTierInfo.perks.map((perk, i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                  <span>{perk}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Transaction Ledger */}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">

@@ -6,6 +6,7 @@ import { CartDrawer } from '../components/landing/CartDrawer';
 import { MemberLookupModal } from '../components/landing/MemberLookupModal';
 import { OrderSuccessModal } from '../components/landing/OrderSuccessModal';
 import { LuckyWheelModal } from '../components/landing/LuckyWheelModal';
+import { LoyaltyPolicyModal } from '../components/landing/LoyaltyPolicyModal';
 import { LiveActivityToast } from '../components/landing/LiveActivityToast';
 import { MobileBottomBar } from '../components/landing/MobileBottomBar';
 import { Footer } from '../components/landing/Footer';
@@ -19,23 +20,31 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAdmin }) => {
   const products = useShopStore((state) => state.products);
   const fetchProducts = useShopStore((state) => state.fetchProducts);
+  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [lookupPhone, setLookupPhone] = useState('');
   const [isWheelOpen, setIsWheelOpen] = useState(false);
+  const [isPolicyOpen, setIsPolicyOpen] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
-  // Tải danh sách sản phẩm qua Zustand store (chỉ fetch 1 lần, không gọi lại khi chuyển tab)
+  // Tải cấu hình tiệm & danh sách món qua Zustand store (chỉ nạp 1 lần duy nhất khi load trang)
   useEffect(() => {
+    fetchShopConfig();
     fetchProducts();
 
     const handleProductChange = () => {
       fetchProducts(true);
     };
+    const handleConfigChange = () => {
+      fetchShopConfig(true);
+    };
     window.addEventListener('bake_sip_product_updated', handleProductChange);
+    window.addEventListener('bake_sip_config_updated', handleConfigChange);
     return () => {
       window.removeEventListener('bake_sip_product_updated', handleProductChange);
+      window.removeEventListener('bake_sip_config_updated', handleConfigChange);
     };
-  }, [fetchProducts]);
+  }, [fetchShopConfig, fetchProducts]);
 
   const scrollToCatalog = () => {
     const el = document.getElementById('catalog-section');
@@ -63,6 +72,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAdmin }) => {
         }}
         onOpenWheel={() => setIsWheelOpen(true)}
         onOpenAdmin={onOpenAdmin}
+        onOpenPolicy={() => setIsPolicyOpen(true)}
       />
 
       {/* Hero Section */}
@@ -81,12 +91,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAdmin }) => {
       </main>
 
       {/* Footer */}
-      <Footer />
+      <Footer onOpenPolicy={() => setIsPolicyOpen(true)} />
 
       {/* Interactive Cart Drawer */}
       <CartDrawer onOrderCreated={handleOrderCreated} />
 
-      {/* Order Creation Success Modal (Hiển thị mã đơn #BS-XXXX) */}
+      {/* Order Creation Success Modal (Hiển thị mã đơn #CH-XXXX) */}
       <OrderSuccessModal
         order={createdOrder}
         isOpen={createdOrder !== null}
@@ -100,6 +110,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAdmin }) => {
         initialPhone={lookupPhone}
         onClose={() => setIsLookupOpen(false)}
         onStartOrder={scrollToCatalog}
+      />
+
+      {/* Membership Policy & Tiers Modal */}
+      <LoyaltyPolicyModal
+        isOpen={isPolicyOpen}
+        onClose={() => setIsPolicyOpen(false)}
+        onOpenLookup={() => {
+          setIsPolicyOpen(false);
+          setLookupPhone('');
+          setIsLookupOpen(true);
+        }}
       />
 
       {/* Interactive Lucky Wheel Modal */}

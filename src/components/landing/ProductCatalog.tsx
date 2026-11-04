@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Search, Sparkles, Star, SlidersHorizontal, ShoppingBag, Store, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useShopStore } from '../../stores/useShopStore';
@@ -21,15 +21,10 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
   } = useCart();
 
   const shopConfig = useShopStore((state) => state.shopConfig);
-  const fetchShopConfig = useShopStore((state) => state.fetchShopConfig);
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
   const [animatingProductId, setAnimatingProductId] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchShopConfig();
-  }, [fetchShopConfig]);
 
   const categories = useMemo(() => {
     const list = ['Tất cả'];

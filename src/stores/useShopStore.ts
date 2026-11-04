@@ -60,10 +60,15 @@ const initialConfig = loadCachedData<ShopConfig>(STORAGE_KEY_CONFIG, SHOP_CONFIG
 const initialProducts = loadCachedData<Product[]>(STORAGE_KEY_PRODUCTS, []);
 const initialVouchers = loadCachedData<Voucher[]>(STORAGE_KEY_VOUCHERS, []);
 
-// Biến lưu trữ Promise đang bay (In-flight request deduplication)
+// Biến lưu trữ Promise đang bay (In-flight request deduplication) và cờ nạp dữ liệu một lần (Memory Singleton)
 let configInFlightPromise: Promise<ShopConfig> | null = null;
 let productsInFlightPromise: Promise<Product[]> | null = null;
 let vouchersInFlightPromise: Promise<Voucher[]> | null = null;
+
+// Cờ xác nhận đã nạp thành công từ backend ít nhất 1 lần trong phiên hiện tại
+let configFetchedOnce = initialConfig.isLoaded;
+let productsFetchedOnce = initialProducts.isLoaded && initialProducts.data.length > 0;
+let vouchersFetchedOnce = initialVouchers.isLoaded;
 
 export const useShopStore = create<ShopState>((set, get) => ({
   // 1. CONFIG STATE
@@ -74,8 +79,8 @@ export const useShopStore = create<ShopState>((set, get) => ({
   fetchShopConfig: async (force = false): Promise<ShopConfig> => {
     const { isConfigLoaded, shopConfig } = get();
 
-    // Nếu đã có cấu hình và không ép buộc fetch lại -> Trả về ngay lập tức, không gọi API!
-    if (!force && isConfigLoaded && shopConfig) {
+    // Nếu đã nạp cấu hình và không ép buộc fetch lại -> Trả về ngay lập tức, tuyệt đối không gửi request mạng!
+    if (!force && (configFetchedOnce || isConfigLoaded) && shopConfig?.shopName) {
       return shopConfig;
     }
 
@@ -90,6 +95,7 @@ export const useShopStore = create<ShopState>((set, get) => ({
       try {
         const config = await apiStoreService.getShopConfig();
         if (config) {
+          configFetchedOnce = true;
           saveCachedData(STORAGE_KEY_CONFIG, config);
           set({ shopConfig: config, isConfigLoaded: true, isConfigLoading: false });
           return config;
@@ -138,7 +144,7 @@ export const useShopStore = create<ShopState>((set, get) => ({
   fetchProducts: async (force = false): Promise<Product[]> => {
     const { isProductsLoaded, products } = get();
 
-    if (!force && isProductsLoaded && products.length > 0) {
+    if (!force && (productsFetchedOnce || isProductsLoaded) && products?.length > 0) {
       return products;
     }
 
@@ -152,6 +158,7 @@ export const useShopStore = create<ShopState>((set, get) => ({
       try {
         const list = await apiStoreService.getProducts();
         if (list) {
+          productsFetchedOnce = true;
           saveCachedData(STORAGE_KEY_PRODUCTS, list);
           set({ products: list, isProductsLoaded: true, isProductsLoading: false });
           return list;
@@ -182,7 +189,7 @@ export const useShopStore = create<ShopState>((set, get) => ({
   fetchVouchers: async (force = false): Promise<Voucher[]> => {
     const { isVouchersLoaded, vouchers } = get();
 
-    if (!force && isVouchersLoaded && vouchers.length > 0) {
+    if (!force && (vouchersFetchedOnce || isVouchersLoaded) && vouchers?.length > 0) {
       return vouchers;
     }
 
@@ -196,6 +203,7 @@ export const useShopStore = create<ShopState>((set, get) => ({
       try {
         const list = await apiStoreService.getVouchers();
         if (list) {
+          vouchersFetchedOnce = true;
           saveCachedData(STORAGE_KEY_VOUCHERS, list);
           set({ vouchers: list, isVouchersLoaded: true, isVouchersLoading: false });
           return list;

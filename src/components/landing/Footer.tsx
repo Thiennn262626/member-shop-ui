@@ -1,9 +1,13 @@
 import React from 'react';
-import { Phone, MapPin, MessageSquare, ShieldCheck, Clock } from 'lucide-react';
+import { Phone, MapPin, MessageSquare, ShieldCheck, Clock, Award, Sparkles } from 'lucide-react';
 import { useShopStore } from '../../stores/useShopStore';
 import { formatCurrency } from '../../utils/format';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onOpenPolicy?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onOpenPolicy }) => {
   const shopConfig = useShopStore((state) => state.shopConfig);
 
   return (
@@ -55,9 +59,21 @@ export const Footer: React.FC = () => {
 
           {/* Loyalty Policy */}
           <div className="md:col-span-3 space-y-2.5">
-            <h4 className="text-stone-200 font-bold uppercase tracking-wider text-xs">
-              Chính Sách Hội Viên
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-stone-200 font-bold uppercase tracking-wider text-xs">
+                Chính Sách Hội Viên
+              </h4>
+              {onOpenPolicy && (
+                <button
+                  type="button"
+                  onClick={onOpenPolicy}
+                  className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold cursor-pointer underline flex items-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Xem chi tiết</span>
+                </button>
+              )}
+            </div>
             <div className="space-y-1.5 text-stone-400">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -69,9 +85,23 @@ export const Footer: React.FC = () => {
               </div>
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Đổi món miễn phí & nhân điểm tới x1.5 lần</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span>Tự động tích điểm theo SĐT khi đặt đơn</span>
               </div>
             </div>
+            {onOpenPolicy && (
+              <button
+                type="button"
+                onClick={onOpenPolicy}
+                className="mt-2 w-full py-1.5 px-3 rounded-xl bg-stone-800 hover:bg-stone-700/80 text-amber-300 text-[11px] font-bold border border-stone-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Award className="w-3.5 h-3.5 text-amber-400" />
+                <span>Bảng quyền lợi 4 hạng thẻ & hoàn tiền</span>
+              </button>
+            )}
           </div>
         </div>
 
