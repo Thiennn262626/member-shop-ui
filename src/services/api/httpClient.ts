@@ -5,8 +5,28 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 
-// Base URL kết nối Go Backend
-export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+// Base URL kết nối Go Backend (Tự động nhận diện môi trường Vercel Cloud vs Local)
+const resolveApiBase = (): string => {
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+
+  // 1. Nếu đang chạy trên domain production/preview của Vercel
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    // Nếu biến môi trường vô tình bị trỏ về localhost -> Tự động chuyển hướng sang Render live API
+    if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+      return 'https://member-shop-api.onrender.com';
+    }
+    return envUrl.replace(/\/$/, '');
+  }
+
+  // 2. Môi trường local development
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  return 'http://localhost:8088';
+};
+
+export const API_BASE = resolveApiBase();
 
 // Storage Key cho Access Token (Refresh Token được quản lý bảo mật 100% bằng HttpOnly Cookie)
 const ACCESS_TOKEN_KEY = 'member_shop_access_token';
