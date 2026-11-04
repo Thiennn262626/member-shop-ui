@@ -12,6 +12,7 @@ import {
 import { storeService, TIER_CONFIG } from '../../services/storeService';
 import type { AdminRole, Customer, MemberTier, PointTransaction } from '../../types';
 import { formatCurrency, formatDate, formatPhone } from '../../utils/format';
+import { Pagination } from '../common/Pagination';
 
 interface CustomerManagerProps {
   userRole?: AdminRole;
@@ -22,6 +23,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState<'ALL' | MemberTier>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modals
   const [selectedCustomerForHistory, setSelectedCustomerForHistory] = useState<Customer | null>(null);
@@ -80,6 +83,12 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
       return matchTier && matchSearch;
     });
   }, [customers, tierFilter, searchQuery]);
+
+  // Phân trang mượt mà danh sách khách hàng
+  const paginatedCustomers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredCustomers.slice(startIndex, startIndex + pageSize);
+  }, [filteredCustomers, currentPage, pageSize]);
 
   // Mở modal lịch sử điểm
   const handleOpenHistory = async (c: Customer) => {
@@ -191,7 +200,10 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
               type="text"
               placeholder="Tìm theo tên hoặc số điện thoại khách hàng..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-10 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 focus:bg-white"
             />
           </div>
@@ -199,7 +211,10 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
           <div className="sm:col-span-5">
             <select
               value={tierFilter}
-              onChange={(e) => setTierFilter(e.target.value as any)}
+              onChange={(e) => {
+                setTierFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs text-stone-800 focus:outline-none focus:border-amber-600"
             >
               <option value="ALL">Tất cả phân hạng thẻ ({customers.length})</option>
@@ -232,7 +247,7 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {filteredCustomers.map((c) => {
+                {paginatedCustomers.map((c) => {
                   const tierInfo = TIER_CONFIG[c.tier];
                   return (
                     <tr key={c.id} className="hover:bg-amber-50/40 transition-colors">
@@ -293,6 +308,23 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
             </table>
           </div>
         )}
+
+        {/* Phân trang danh sách khách hàng chuẩn CEO */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(filteredCustomers.length / pageSize)}
+          totalItems={filteredCustomers.length}
+          pageSize={pageSize}
+          onPageChange={(p) => {
+            setCurrentPage(p);
+          }}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 100]}
+          itemLabel="khách hàng"
+        />
       </div>
 
       {/* MODAL LỊCH SỬ BIẾN ĐỘNG ĐIỂM CỦA KHÁCH */}

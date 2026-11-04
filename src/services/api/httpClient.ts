@@ -26,20 +26,59 @@ export const clearTokens = (): void => {
 // Alias tương thích ngược cho codebase cũ
 export const clearAccessToken = clearTokens;
 
+export interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export type PaginatedList<T> = T[] & {
+  meta?: PaginationMeta;
+  pagination?: PaginationMeta;
+};
+
 export interface ApiResponse<T = any> {
   success: boolean;
   code: string;
   message: string;
   data: T;
-  meta?: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  };
+  meta?: PaginationMeta;
   traceId?: string;
   timestamp?: string;
 }
+
+/**
+ * Tự động unwrap envelope `{ success: true, data: ..., meta: ... }`
+ * Đính kèm non-enumerable property `meta` vào data để tương thích ngược 100% với array duyệt vòng lặp
+ */
+const unwrapResponseData = (response: AxiosResponse) => {
+  if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+    const result = response.data.data;
+    const meta = response.data.meta;
+    if (meta && result && typeof result === 'object') {
+      try {
+        Object.defineProperty(result, 'meta', {
+          value: meta,
+          enumerable: false,
+          writable: true,
+          configurable: true,
+        });
+        Object.defineProperty(result, 'pagination', {
+          value: meta,
+          enumerable: false,
+          writable: true,
+          configurable: true,
+        });
+      } catch {
+        (result as any).meta = meta;
+        (result as any).pagination = meta;
+      }
+    }
+    return result;
+  }
+  return response.data;
+};
 
 // ---------------------------------------------------------------------------
 // 1. PUBLIC AXIOS INSTANCE
@@ -60,11 +99,7 @@ export const publicApi: AxiosInstance = axios.create({
 
 publicApi.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Tự động unwrap envelope `{ success: true, data: ... }` để trả về trực tiếp `data`
-    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-      return response.data.data;
-    }
-    return response.data;
+    return unwrapResponseData(response);
   },
   (error) => {
     const message =
@@ -131,11 +166,7 @@ const processQueue = (error: any, token: string | null = null) => {
 // Response Interceptor: Xử lý mượt mà lỗi 401 bằng hàng đợi Promise Mutex
 authApi.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Unwrap envelope `{ success: true, data: ... }`
-    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-      return response.data.data;
-    }
-    return response.data;
+    return unwrapResponseData(response);
   },
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };

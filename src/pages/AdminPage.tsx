@@ -43,6 +43,7 @@ import { ShopSettings } from '../components/admin/ShopSettings';
 import { ShiftManager } from '../components/admin/ShiftManager';
 import { VoucherManager } from '../components/admin/VoucherManager';
 import { PrintBillModal } from '../components/admin/PrintBillModal';
+import { Pagination } from '../components/common/Pagination';
 
 interface AdminPageProps {
   onLogout: () => void;
@@ -96,6 +97,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | OrderStatus>('ALL');
+  const [orderPage, setOrderPage] = useState<number>(1);
+  const [orderPageSize, setOrderPageSize] = useState<number>(8);
 
   // Cập nhật đồng hồ thời gian thực mỗi giây
   useEffect(() => {
@@ -334,6 +337,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     if (statusFilter === 'ALL') return true;
     return o.status === statusFilter;
   });
+
+  const paginatedOrders = filteredOrders.slice(
+    (orderPage - 1) * orderPageSize,
+    orderPage * orderPageSize
+  );
 
   const pendingCount = orders.filter((o) => o.status === 'pending').length;
   const confirmedCount = orders.filter((o) => o.status === 'confirmed').length;
@@ -1143,7 +1151,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="flex flex-wrap gap-1.5 text-xs">
                     <button
                       type="button"
-                      onClick={() => setStatusFilter('ALL')}
+                      onClick={() => { setStatusFilter('ALL'); setOrderPage(1); }}
                       className={`px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
                         statusFilter === 'ALL'
                           ? 'bg-stone-900 text-amber-300'
@@ -1155,7 +1163,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => setStatusFilter('pending')}
+                      onClick={() => { setStatusFilter('pending'); setOrderPage(1); }}
                       className={`px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                         statusFilter === 'pending'
                           ? 'bg-amber-500 text-stone-950 font-bold'
@@ -1172,7 +1180,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => setStatusFilter('confirmed')}
+                      onClick={() => { setStatusFilter('confirmed'); setOrderPage(1); }}
                       className={`px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                         statusFilter === 'confirmed'
                           ? 'bg-sky-600 text-white font-bold'
@@ -1184,7 +1192,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => setStatusFilter('shipping')}
+                      onClick={() => { setStatusFilter('shipping'); setOrderPage(1); }}
                       className={`px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                         statusFilter === 'shipping'
                           ? 'bg-indigo-600 text-white font-bold'
@@ -1196,7 +1204,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => setStatusFilter('completed')}
+                      onClick={() => { setStatusFilter('completed'); setOrderPage(1); }}
                       className={`px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
                         statusFilter === 'completed'
                           ? 'bg-emerald-600 text-white font-bold'
@@ -1213,56 +1221,74 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                       Không có đơn hàng nào trong mục này.
                     </div>
                   ) : (
-                    <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
-                      {filteredOrders.map((order) => {
-                        const isSelected = selectedOrder?.id === order.id;
-                        const statusInfo = ORDER_STATUS_MAP[order.status];
+                    <>
+                      <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
+                        {paginatedOrders.map((order) => {
+                          const isSelected = selectedOrder?.id === order.id;
+                          const statusInfo = ORDER_STATUS_MAP[order.status];
 
-                        return (
-                          <button
-                            type="button"
-                            key={order.id}
-                            onClick={() => handleSelectOrderFromList(order)}
-                            className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                              isSelected
-                                ? 'border-amber-600 bg-amber-50/70 shadow-xs ring-1 ring-amber-600/30'
-                                : 'border-stone-200 bg-white hover:border-amber-400'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-black text-sm text-stone-900">
-                                  {order.orderCode}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${statusInfo.badgeClass}`}>
-                                  {statusInfo.label}
-                                </span>
-                                {order.createdSource === 'pos' && (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900">
-                                    POS
+                          return (
+                            <button
+                              type="button"
+                              key={order.id}
+                              onClick={() => handleSelectOrderFromList(order)}
+                              className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'border-amber-600 bg-amber-50/70 shadow-xs ring-1 ring-amber-600/30'
+                                  : 'border-stone-200 bg-white hover:border-amber-400'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-black text-sm text-stone-900">
+                                    {order.orderCode}
                                   </span>
-                                )}
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${statusInfo.badgeClass}`}>
+                                    {statusInfo.label}
+                                  </span>
+                                  {order.createdSource === 'pos' && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900">
+                                      POS
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs font-bold text-amber-800 font-mono">
+                                  {formatCurrency(order.orderTotal)}
+                                </span>
                               </div>
-                              <span className="text-xs font-bold text-amber-800 font-mono">
-                                {formatCurrency(order.orderTotal)}
-                              </span>
-                            </div>
 
-                            <div className="text-xs text-stone-600 mt-1.5 flex items-center justify-between">
-                              <span>{order.customerName} ({order.customerPhone})</span>
-                              <span className="text-[11px] text-stone-400">{order.items.length} món</span>
-                            </div>
+                              <div className="text-xs text-stone-600 mt-1.5 flex items-center justify-between">
+                                <span>{order.customerName} ({order.customerPhone})</span>
+                                <span className="text-[11px] text-stone-400">{order.items.length} món</span>
+                              </div>
 
-                            <div className="flex items-center justify-between mt-1 text-[11px]">
-                              <span className={`font-semibold ${order.paymentStatus === 'paid' ? 'text-emerald-700' : 'text-amber-800'}`}>
-                                {order.paymentStatus === 'paid' ? '✓ Đã thanh toán' : '⏳ Chưa thanh toán'}
-                              </span>
-                              <span className="text-stone-400">{formatDate(order.createdAt)}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                              <div className="flex items-center justify-between mt-1 text-[11px]">
+                                <span className={`font-semibold ${order.paymentStatus === 'paid' ? 'text-emerald-700' : 'text-amber-800'}`}>
+                                  {order.paymentStatus === 'paid' ? '✓ Đã thanh toán' : '⏳ Chưa thanh toán'}
+                                </span>
+                                <span className="text-stone-400">{formatDate(order.createdAt)}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Phân trang danh sách đơn hàng chuẩn CEO */}
+                      <Pagination
+                        currentPage={orderPage}
+                        totalPages={Math.ceil(filteredOrders.length / orderPageSize)}
+                        totalItems={filteredOrders.length}
+                        pageSize={orderPageSize}
+                        onPageChange={setOrderPage}
+                        onPageSizeChange={(newSize) => {
+                          setOrderPageSize(newSize);
+                          setOrderPage(1);
+                        }}
+                        pageSizeOptions={[5, 10, 20, 50]}
+                        itemLabel="đơn"
+                        className="rounded-2xl"
+                      />
+                    </>
                   )}
                 </div>
 

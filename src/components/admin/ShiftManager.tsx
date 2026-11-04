@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { CashShift, StaffAccount } from '../../types';
 import { storeService } from '../../services/storeService';
 import { formatCurrency, formatDateTime } from '../../utils/format';
+import { Pagination } from '../common/Pagination';
 
 interface ShiftManagerProps {
   currentStaff: StaffAccount;
@@ -9,6 +10,8 @@ interface ShiftManagerProps {
 
 export function ShiftManager({ currentStaff }: ShiftManagerProps) {
   const [shifts, setShifts] = useState<CashShift[]>([]);
+  const [shiftPage, setShiftPage] = useState(1);
+  const [shiftPageSize, setShiftPageSize] = useState(10);
   const [currentShift, setCurrentShift] = useState<CashShift | null>(null);
   const [selectedShiftForDetail, setSelectedShiftForDetail] = useState<CashShift | null>(null);
 
@@ -95,6 +98,11 @@ export function ShiftManager({ currentStaff }: ShiftManagerProps) {
     if (!currentShift) return 0;
     return (Number(actualCashInput) || 0) - currentShift.expectedCash;
   };
+
+  const paginatedShifts = shifts.slice(
+    (shiftPage - 1) * shiftPageSize,
+    shiftPage * shiftPageSize
+  );
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -266,7 +274,7 @@ export function ShiftManager({ currentStaff }: ShiftManagerProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {shifts.map((s) => {
+              {paginatedShifts.map((s) => {
                 const diff = s.difference ?? (s.actualCash !== undefined ? s.actualCash - s.expectedCash : 0);
                 return (
                   <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
@@ -342,6 +350,21 @@ export function ShiftManager({ currentStaff }: ShiftManagerProps) {
             </tbody>
           </table>
         </div>
+
+        {/* Phân trang lịch sử ca trực chốt két chuẩn CEO */}
+        <Pagination
+          currentPage={shiftPage}
+          totalPages={Math.ceil(shifts.length / shiftPageSize)}
+          totalItems={shifts.length}
+          pageSize={shiftPageSize}
+          onPageChange={setShiftPage}
+          onPageSizeChange={(newSize) => {
+            setShiftPageSize(newSize);
+            setShiftPage(1);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+          itemLabel="ca trực"
+        />
       </div>
 
       {/* Modal Mở Ca Mới */}

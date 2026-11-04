@@ -5,6 +5,7 @@ import {
   setAccessToken,
   clearTokens,
   API_BASE,
+  type PaginatedList,
 } from './httpClient';
 import type {
   CashShift,
@@ -268,8 +269,26 @@ class ApiStoreService {
   }
 
   // --- ORDERS (ADMIN) ---
-  async getOrders(): Promise<Order[]> {
-    const list = await authApi.get<any, Order[]>('/admin/orders?limit=100');
+  async getOrders(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    status?: string;
+    phone?: string;
+    paymentStatus?: string;
+  }): Promise<PaginatedList<Order>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+    else if (!params?.page) query.set('limit', '100');
+    if (params?.search) query.set('search', params.search);
+    if (params?.status && params.status !== 'ALL') query.set('status', params.status);
+    if (params?.phone) query.set('phone', params.phone);
+    if (params?.paymentStatus) query.set('paymentStatus', params.paymentStatus);
+
+    const qs = query.toString();
+    const url = `/admin/orders${qs ? `?${qs}` : ''}`;
+    const list = await authApi.get<any, PaginatedList<Order>>(url);
     return list || [];
   }
 
@@ -296,8 +315,21 @@ class ApiStoreService {
   }
 
   // --- CUSTOMERS (ADMIN) ---
-  async getCustomers(): Promise<Customer[]> {
-    const list = await authApi.get<any, Customer[]>('/admin/customers');
+  async getCustomers(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    tier?: string;
+  }): Promise<PaginatedList<Customer>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+    if (params?.search) query.set('search', params.search);
+    if (params?.tier && params.tier !== 'ALL') query.set('tier', params.tier);
+
+    const qs = query.toString();
+    const url = `/admin/customers${qs ? `?${qs}` : ''}`;
+    const list = await authApi.get<any, PaginatedList<Customer>>(url);
     return list || [];
   }
 
@@ -313,8 +345,19 @@ class ApiStoreService {
   }
 
   // --- VOUCHERS (ADMIN) ---
-  async getVouchers(): Promise<Voucher[]> {
-    const list = await authApi.get<any, Voucher[]>('/admin/vouchers');
+  async getVouchers(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+  }): Promise<PaginatedList<Voucher>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+    if (params?.search) query.set('search', params.search);
+
+    const qs = query.toString();
+    const url = `/admin/vouchers${qs ? `?${qs}` : ''}`;
+    const list = await authApi.get<any, PaginatedList<Voucher>>(url);
     return list || [];
   }
 
@@ -360,14 +403,36 @@ class ApiStoreService {
     });
   }
 
-  async getShifts(): Promise<CashShift[]> {
-    const list = await authApi.get<any, CashShift[]>('/admin/shifts/history');
+  async getShifts(params?: {
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedList<CashShift>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+
+    const qs = query.toString();
+    const url = `/admin/shifts/history${qs ? `?${qs}` : ''}`;
+    const list = await authApi.get<any, PaginatedList<CashShift>>(url);
     return list || [];
   }
 
   // --- STAFF ACCOUNTS (ADMIN) ---
-  async getStaffAccounts(): Promise<StaffAccount[]> {
-    const list = await authApi.get<any, StaffAccount[]>('/admin/staff');
+  async getStaffAccounts(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    role?: string;
+  }): Promise<PaginatedList<StaffAccount>> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+    if (params?.search) query.set('search', params.search);
+    if (params?.role && params.role !== 'ALL') query.set('role', params.role);
+
+    const qs = query.toString();
+    const url = `/admin/staff${qs ? `?${qs}` : ''}`;
+    const list = await authApi.get<any, PaginatedList<StaffAccount>>(url);
     return list || [];
   }
 

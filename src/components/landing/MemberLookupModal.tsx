@@ -20,6 +20,7 @@ import confetti from 'canvas-confetti';
 import { storeService, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../../services/storeService';
 import type { Customer, Order, OrderStatus, PointTransaction } from '../../types';
 import { formatCurrency, formatDate, formatPhone } from '../../utils/format';
+import { Pagination } from '../common/Pagination';
 
 interface MemberLookupModalProps {
   isOpen: boolean;
@@ -44,6 +45,8 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
   const [hasSearched, setHasSearched] = useState(false);
   const [filterTxType, setFilterTxType] = useState<'ALL' | 'EARN' | 'REDEEM'>('ALL');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersPageSize, setOrdersPageSize] = useState(5);
 
   const handleSearch = useCallback((phoneToSearch?: string) => {
     const targetPhone = phoneToSearch ?? phoneNumber;
@@ -297,8 +300,11 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        {customerOrders.map((order) => {
+                      <>
+                        <div className="space-y-4">
+                        {customerOrders
+                          .slice((ordersPage - 1) * ordersPageSize, ordersPage * ordersPageSize)
+                          .map((order) => {
                           const statusInfo = ORDER_STATUS_MAP[order.status] || ORDER_STATUS_MAP.pending;
                           const isCopiedOrderCode = copiedKey === `code-${order.orderCode}`;
                           const isCopiedBankAcc = copiedKey === `bank-${order.id}`;
@@ -670,6 +676,23 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
                           );
                         })}
                       </div>
+
+                      {/* Phân trang lịch sử đơn hàng của khách chuẩn CEO */}
+                      <Pagination
+                        currentPage={ordersPage}
+                        totalPages={Math.ceil(customerOrders.length / ordersPageSize)}
+                        totalItems={customerOrders.length}
+                        pageSize={ordersPageSize}
+                        onPageChange={setOrdersPage}
+                        onPageSizeChange={(newSize) => {
+                          setOrdersPageSize(newSize);
+                          setOrdersPage(1);
+                        }}
+                        pageSizeOptions={[3, 5, 10]}
+                        itemLabel="đơn"
+                        className="rounded-2xl"
+                      />
+                    </>
                     )}
                   </div>
                 )}

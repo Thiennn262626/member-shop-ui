@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import type { Voucher } from '../../types';
 import { storeService } from '../../services/storeService';
 import { formatCurrency, formatDateTime } from '../../utils/format';
+import { Pagination } from '../common/Pagination';
 
 export function VoucherManager() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
 
   // Form State
   const [code, setCode] = useState('');
@@ -172,6 +176,17 @@ export function VoucherManager() {
     return <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">Đang Hiệu Lực</span>;
   };
 
+  const filteredVouchers = vouchers.filter((v) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return v.code.toLowerCase().includes(q) || v.title.toLowerCase().includes(q);
+  });
+
+  const paginatedVouchers = filteredVouchers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
@@ -187,15 +202,34 @@ export function VoucherManager() {
 
         <button
           onClick={openAddModal}
-          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-md shadow-amber-500/20 flex items-center gap-2 transition-all"
+          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-md shadow-amber-500/20 flex items-center gap-2 transition-all cursor-pointer"
         >
           <span>➕</span> Tạo Mã Khuyến Mãi Mới
         </button>
       </div>
 
+      {/* Search Toolbar */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Tìm theo mã voucher hoặc tên khuyến mãi..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-amber-500 focus:bg-white transition-colors"
+          />
+        </div>
+        <div className="text-xs text-slate-500 font-medium">
+          Tìm thấy <strong className="text-amber-600 font-mono">{filteredVouchers.length}</strong> mã khuyến mãi
+        </div>
+      </div>
+
       {/* Grid danh sách vouchers */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {vouchers.map((v) => {
+        {paginatedVouchers.map((v) => {
           const percentUsed = v.usageLimit ? Math.min(100, Math.round((v.usedCount / v.usageLimit) * 100)) : null;
 
           return (
@@ -296,6 +330,22 @@ export function VoucherManager() {
           );
         })}
       </div>
+
+      {/* Phân trang danh sách voucher chuẩn CEO */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={Math.ceil(filteredVouchers.length / pageSize)}
+        totalItems={filteredVouchers.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setCurrentPage(1);
+        }}
+        pageSizeOptions={[6, 9, 15, 30]}
+        itemLabel="mã voucher"
+        className="rounded-2xl border border-slate-200"
+      />
 
       {/* Modal Thêm / Chỉnh Sửa Voucher */}
       {isModalOpen && (

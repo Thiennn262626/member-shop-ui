@@ -22,6 +22,7 @@ import { storeService } from '../../services/storeService';
 import type { AdminRole, MonthlyPayrollSummary, StaffAccount, WorkShift, WorkShiftStatus } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { CashierScheduleView } from './CashierScheduleView';
+import { Pagination } from '../common/Pagination';
 
 interface StaffManagerProps {
   currentStaff?: StaffAccount;
@@ -42,6 +43,8 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
   // --- OWNER MANAGEMENT PORTAL ---
   const [activeTab, setActiveTab] = useState<'assign_calendar' | 'overview_calendar' | 'payroll' | 'accounts'>('assign_calendar');
   const [staffList, setStaffList] = useState<StaffAccount[]>([]);
+  const [staffPage, setStaffPage] = useState(1);
+  const [staffPageSize, setStaffPageSize] = useState(5);
   const [workShifts, setWorkShifts] = useState<WorkShift[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -78,6 +81,12 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
   // Payroll summary
   const [payrollList, setPayrollList] = useState<MonthlyPayrollSummary[]>([]);
+
+  // Phân trang danh sách nhân viên
+  const paginatedStaffList = useMemo(() => {
+    const startIndex = (staffPage - 1) * staffPageSize;
+    return staffList.slice(startIndex, startIndex + staffPageSize);
+  }, [staffList, staffPage, staffPageSize]);
 
   // Load database
   const loadData = async () => {
@@ -1068,7 +1077,7 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {staffList.map((staff) => {
+                {paginatedStaffList.map((staff) => {
                   const isOwner = staff.role === 'owner';
                   return (
                     <tr key={staff.id} className="hover:bg-amber-50/40 transition-colors">
@@ -1142,6 +1151,21 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
               </tbody>
             </table>
           </div>
+
+          {/* Phân trang danh sách nhân viên chuẩn CEO */}
+          <Pagination
+            currentPage={staffPage}
+            totalPages={Math.ceil(staffList.length / staffPageSize)}
+            totalItems={staffList.length}
+            pageSize={staffPageSize}
+            onPageChange={setStaffPage}
+            onPageSizeChange={(newSize) => {
+              setStaffPageSize(newSize);
+              setStaffPage(1);
+            }}
+            pageSizeOptions={[5, 10, 20]}
+            itemLabel="nhân viên"
+          />
         </div>
       )}
 

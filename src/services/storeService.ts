@@ -1,5 +1,6 @@
 import { apiStoreService } from './api/apiStoreService';
 import { useShopStore } from '../stores/useShopStore';
+import type { PaginatedList, PaginationMeta } from './api/httpClient';
 import {
   SHOP_CONFIG,
   TIER_CONFIG,
@@ -41,6 +42,7 @@ export {
   DRINK_SWEET_GROUP,
   DRINK_ICE_GROUP,
 };
+export type { PaginatedList, PaginationMeta };
 
 /**
  * Tính phí giao hàng theo cấu hình tiệm
@@ -204,8 +206,15 @@ class StoreService {
   }
 
   // --- ORDERS ---
-  async getOrders(): Promise<Order[]> {
-    return await apiStoreService.getOrders();
+  async getOrders(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    status?: string;
+    phone?: string;
+    paymentStatus?: string;
+  }): Promise<PaginatedList<Order>> {
+    return await apiStoreService.getOrders(params);
   }
 
   async getOrderByCode(code: string): Promise<Order | undefined> {
@@ -245,8 +254,13 @@ class StoreService {
     return await apiStoreService.getCustomerFullLookup(phone);
   }
 
-  async getCustomers(): Promise<Customer[]> {
-    return await apiStoreService.getCustomers();
+  async getCustomers(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    tier?: string;
+  }): Promise<PaginatedList<Customer>> {
+    return await apiStoreService.getCustomers(params);
   }
 
   async getTransactions(customerId: string): Promise<PointTransaction[]> {
@@ -308,8 +322,11 @@ class StoreService {
     return await apiStoreService.closeShift(id, actualCash, n, nextStaff);
   }
 
-  async getShifts(): Promise<CashShift[]> {
-    return await apiStoreService.getShifts();
+  async getShifts(params?: {
+    page?: number;
+    pageSize?: number;
+  }): Promise<PaginatedList<CashShift>> {
+    return await apiStoreService.getShifts(params);
   }
 
   // --- STAFF & AUTH ---
@@ -321,8 +338,13 @@ class StoreService {
     await apiStoreService.logout();
   }
 
-  async getStaffAccounts(): Promise<StaffAccount[]> {
-    return await apiStoreService.getStaffAccounts();
+  async getStaffAccounts(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    role?: string;
+  }): Promise<PaginatedList<StaffAccount>> {
+    return await apiStoreService.getStaffAccounts(params);
   }
 
   async addStaffAccount(payload: any): Promise<StaffAccount> {

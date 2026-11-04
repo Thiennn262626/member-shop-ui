@@ -21,6 +21,7 @@ import { storeService, OPTION_PRESETS } from '../../services/storeService';
 import { useShopStore } from '../../stores/useShopStore';
 import type { AdminRole, ItemOptionGroup, Product } from '../../types';
 import { formatCurrency } from '../../utils/format';
+import { Pagination } from '../common/Pagination';
 
 // Kho ảnh mẫu F&B chất lượng cao của tiệm bánh & đồ uống
 const SAMPLE_IMAGE_LIBRARY = [
@@ -106,6 +107,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('Tất cả');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -168,6 +171,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
       return matchCat && matchStatus && matchSearch;
     });
   }, [products, categoryFilter, statusFilter, searchQuery]);
+
+  // Phân trang danh sách món ăn mượt mà
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredProducts.slice(startIndex, startIndex + pageSize);
+  }, [filteredProducts, currentPage, pageSize]);
 
   // Mở modal Thêm mới
   const handleOpenAddModal = () => {
@@ -406,7 +415,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
               type="text"
               placeholder="Tìm theo tên bánh, trà, cà phê..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-10 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 focus:bg-white"
             />
           </div>
@@ -415,7 +427,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
           <div className="sm:col-span-4">
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs text-stone-800 focus:outline-none focus:border-amber-600"
             >
               <option value="Tất cả">Tất cả danh mục ({products.length})</option>
@@ -431,7 +446,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
           <div className="sm:col-span-3">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs text-stone-800 focus:outline-none focus:border-amber-600"
             >
               <option value="ALL">Tất cả trạng thái</option>
@@ -464,7 +482,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {filteredProducts.map((p) => {
+                {paginatedProducts.map((p) => {
                   const hasOptions = p.optionGroups && p.optionGroups.length > 0;
                   return (
                     <tr
@@ -598,6 +616,21 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
             </table>
           </div>
         )}
+
+        {/* Phân trang danh sách món ăn chuẩn CEO */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(filteredProducts.length / pageSize)}
+          totalItems={filteredProducts.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+          itemLabel="món"
+        />
       </div>
 
       {/* MODAL THÊM / SỬA MÓN ĂN & THỨC UỐNG */}
