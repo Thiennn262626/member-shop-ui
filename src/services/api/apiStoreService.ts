@@ -2,7 +2,6 @@ import {
   publicApi,
   authApi,
   setAccessToken,
-  setRefreshToken,
   clearTokens,
   API_BASE,
 } from './httpClient';
@@ -185,9 +184,6 @@ class ApiStoreService {
 
       if (res?.accessToken) {
         setAccessToken(res.accessToken);
-        if (res.refreshToken) {
-          setRefreshToken(res.refreshToken);
-        }
         const userData: AdminUserData = {
           id: res.user.id,
           username: res.user.username,

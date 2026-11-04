@@ -8,9 +8,8 @@ import axios, {
 // Base URL kết nối Go Backend
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
-// Storage Keys
+// Storage Key cho Access Token (Refresh Token được quản lý bảo mật 100% bằng HttpOnly Cookie)
 const ACCESS_TOKEN_KEY = 'member_shop_access_token';
-const REFRESH_TOKEN_KEY = 'member_shop_refresh_token';
 
 export const getAccessToken = (): string | null => {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -20,17 +19,8 @@ export const setAccessToken = (token: string): void => {
   localStorage.setItem(ACCESS_TOKEN_KEY, token);
 };
 
-export const getRefreshToken = (): string | null => {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-};
-
-export const setRefreshToken = (token: string): void => {
-  localStorage.setItem(REFRESH_TOKEN_KEY, token);
-};
-
 export const clearTokens = (): void => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
 // Alias tương thích ngược cho codebase cũ
@@ -53,9 +43,10 @@ export interface ApiResponse<T = any> {
 
 // ---------------------------------------------------------------------------
 // 1. PUBLIC AXIOS INSTANCE
-// Dùng cho các API công khai: Xem thực đơn, xem thông tin quán, tra cứu đơn,
+// Dùng cho các API công khai: Xem thực đơn, thông tin quán, tra cứu đơn,
 // đăng nhập (login) và làm mới token (refresh).
-// Không tự động inject Authorization token để đảm bảo hiệu năng và bảo mật.
+// withCredentials: true để trình duyệt tự động gửi/nhận HttpOnly cookie.
+// Không đính kèm Bearer token để tránh rò rỉ và tối ưu hiệu năng.
 // ---------------------------------------------------------------------------
 export const publicApi: AxiosInstance = axios.create({
   baseURL: API_BASE,
@@ -63,7 +54,7 @@ export const publicApi: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  withCredentials: true, // Cho phép trình duyệt gửi/nhận HTTP-Only Cookie refresh_token
+  withCredentials: true, // Cho phép trình duyệt tự gửi HttpOnly Cookie refresh_token
   timeout: 15000,
 });
 
@@ -91,7 +82,7 @@ publicApi.interceptors.response.use(
 
 // ---------------------------------------------------------------------------
 // 2. AUTHENTICATED AXIOS INSTANCE
-// Dùng cho các API yêu cầu xác thực: /admin/..., /v1/auth/me, /v1/auth/logout.
+// Dùng cho các API quản lý: /admin/..., /v1/auth/me, /v1/auth/logout.
 // Tự động inject Bearer Token và quản lý hàng đợi Refresh Token (Concurrency Mutex)
 // Đảm bảo khi có nhiều API cùng lúc gặp lỗi 401 thì chỉ gọi 1 request refresh duy nhất!
 // ---------------------------------------------------------------------------
@@ -101,11 +92,11 @@ export const authApi: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  withCredentials: true, // Gửi HTTP-Only Cookie
+  withCredentials: true,
   timeout: 20000,
 });
 
-// Request Interceptor: Luôn tự động gắn Bearer Token nếu có
+// Request Interceptor: Tự động gắn Bearer Token nếu có
 authApi.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getAccessToken();
@@ -137,7 +128,7 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Response Interceptor: Xử lý mượt mà lỗi 401 bằng hàng đợi Promise
+// Response Interceptor: Xử lý mượt mà lỗi 401 bằng hàng đợi Promise Mutex
 authApi.interceptors.response.use(
   (response: AxiosResponse) => {
     // Unwrap envelope `{ success: true, data: ... }`
@@ -194,32 +185,22 @@ authApi.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const storedRefreshToken = getRefreshToken();
-
-      // Gọi API refresh token (Public instance, gửi kèm HTTP-Only cookie và fallback header/body)
-      const refreshPayload = storedRefreshToken ? { refreshToken: storedRefreshToken } : {};
-      const refreshHeaders = storedRefreshToken ? { 'X-Refresh-Token': storedRefreshToken } : {};
-
+      // Gọi API refresh token: Trình duyệt tự động gửi HttpOnly cookie refresh_token
+      // Tuyệt đối không cần JavaScript đọc hay gửi token thủ công -> Bảo mật tối đa chống XSS!
       const refreshRes = await publicApi.post<{
         accessToken: string;
-        refreshToken?: string;
         expiresIn?: number;
-      }>('/v1/auth/refresh', refreshPayload, { headers: refreshHeaders });
+      }>('/v1/auth/refresh');
 
       const newAccessToken =
         (refreshRes as any)?.accessToken || (refreshRes as any)?.data?.accessToken;
-      const newRefreshToken =
-        (refreshRes as any)?.refreshToken || (refreshRes as any)?.data?.refreshToken;
 
       if (!newAccessToken) {
         throw new Error('Không nhận được Access Token mới từ máy chủ');
       }
 
-      // Lưu lại token mới
+      // Lưu lại Access Token mới (ngắn hạn)
       setAccessToken(newAccessToken);
-      if (newRefreshToken) {
-        setRefreshToken(newRefreshToken);
-      }
 
       // Thông báo giải phóng toàn bộ hàng đợi đang chờ với token mới
       processQueue(null, newAccessToken);
@@ -242,9 +223,6 @@ authApi.interceptors.response.use(
 
 // ---------------------------------------------------------------------------
 // 3. WRAPPER HTTP THÔNG MINH (TƯƠNG THÍCH NGƯỢC)
-// Tự động phân luồng URL:
-// - Bắt đầu bằng /admin/... hoặc /v1/auth/me, /v1/auth/logout => Sử dụng authApi
-// - Các URL còn lại (/v1/products, /v1/config, /v1/orders...) => Sử dụng publicApi
 // ---------------------------------------------------------------------------
 const isAuthRoute = (path: string): boolean => {
   return (
