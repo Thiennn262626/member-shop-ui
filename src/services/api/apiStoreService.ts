@@ -1,6 +1,7 @@
 import {
   publicApi,
   authApi,
+  getAccessToken,
   setAccessToken,
   clearTokens,
   API_BASE,
@@ -28,12 +29,24 @@ class ApiStoreService {
     this.initRealtimeSSE();
   }
 
-  // Kết nối Server-Sent Events (SSE) để nhận sự kiện realtime đơn hàng từ Golang Backend
-  private initRealtimeSSE() {
+  // Kết nối Server-Sent Events (SSE) bảo mật để nhận sự kiện realtime đơn hàng cho màn hình POS
+  public initRealtimeSSE() {
     if (typeof window === 'undefined') return;
 
+    const token = getAccessToken();
+    if (!token) {
+      if (this.sseSource) {
+        this.sseSource.close();
+        this.sseSource = null;
+      }
+      return;
+    }
+
     try {
-      const sseUrl = `${API_BASE}/v1/sse/events`;
+      if (this.sseSource) {
+        this.sseSource.close();
+      }
+      const sseUrl = `${API_BASE}/admin/sse/events?token=${encodeURIComponent(token)}`;
       this.sseSource = new EventSource(sseUrl);
 
       this.sseSource.addEventListener('order_created', (e) => {
@@ -193,6 +206,7 @@ class ApiStoreService {
           shift: res.user.shift,
         };
         sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(userData));
+        this.initRealtimeSSE(); // Kích hoạt kết nối SSE bảo mật cho Admin
         return userData;
       }
       return null;
@@ -222,6 +236,10 @@ class ApiStoreService {
     } catch {
       // Bỏ qua lỗi mạng khi logout
     } finally {
+      if (this.sseSource) {
+        this.sseSource.close();
+        this.sseSource = null;
+      }
       clearTokens();
       sessionStorage.removeItem('bake_sip_admin_user');
     }
