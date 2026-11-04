@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CartProvider } from './context/CartContext';
 import { LandingPage } from './pages/LandingPage';
 import { AdminPage } from './pages/AdminPage';
@@ -19,13 +19,25 @@ export function App() {
     }
   });
 
+  // Dùng Ref để theo dõi màn hình hiện tại bên trong event listener
+  const currentViewRef = useRef(currentView);
+  useEffect(() => {
+    currentViewRef.current = currentView;
+  }, [currentView]);
+
   // Lắng nghe sự kiện phiên đăng nhập hết hạn từ axios interceptor
   useEffect(() => {
     const handleSessionExpired = () => {
       setAdminUser(null);
-      setCurrentView('landing');
-      setLoginError('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.');
-      setIsLoginModalOpen(true);
+      sessionStorage.removeItem('bake_sip_admin_user');
+
+      // QUAN TRỌNG: CHỈ mở modal đăng nhập khi người dùng ĐANG Ở MÀN HÌNH QUẢN TRỊ ADMIN.
+      // Nếu khách hàng đang xem thực đơn ở Landing Page thì tuyệt đối không làm phiền!
+      if (currentViewRef.current === 'admin') {
+        setCurrentView('landing');
+        setLoginError('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.');
+        setIsLoginModalOpen(true);
+      }
     };
 
     window.addEventListener('shop_auth_session_expired', handleSessionExpired);
@@ -34,37 +46,35 @@ export function App() {
     };
   }, []);
 
-  // Kiểm tra tính hợp lệ của session khi tải lại trang
-  useEffect(() => {
+  // Khi người dùng chủ động bấm vào nút "Quản Lý" ở Landing Page
+  const handleRequestAdminAccess = async () => {
+    setLoginError(null);
+
+    // Nếu trước đó đã có tài khoản lưu trong phiên
     if (adminUser) {
-      storeService.getMe().then((me) => {
-        if (!me) {
-          // Token không còn hợp lệ trên backend
-          setAdminUser(null);
-          sessionStorage.removeItem('bake_sip_admin_user');
-          if (currentView === 'admin') {
-            setCurrentView('landing');
-            setIsLoginModalOpen(true);
-          }
-        } else {
+      try {
+        // Kiểm tra xem phiên làm việc còn hiệu lực trên backend không
+        const me = await storeService.getMe();
+        if (me) {
           setAdminUser(me);
           sessionStorage.setItem('bake_sip_admin_user', JSON.stringify(me));
+          setCurrentView('admin');
+          return;
         }
-      });
-    }
-  }, []);
+      } catch {
+        // Session đã hết hạn
+      }
 
-  // Khi bấm vào nút Quản Lý ở LandingPage
-  const handleRequestAdminAccess = () => {
-    if (adminUser) {
-      setCurrentView('admin');
-    } else {
-      setLoginError(null);
-      setIsLoginModalOpen(true);
+      // Nếu session không còn hợp lệ, xóa dữ liệu cũ và yêu cầu đăng nhập lại
+      setAdminUser(null);
+      sessionStorage.removeItem('bake_sip_admin_user');
     }
+
+    // Mở modal đăng nhập sạch sẽ
+    setIsLoginModalOpen(true);
   };
 
-  // Đăng nhập thành công
+  // Đăng nhập thành công từ modal
   const handleLoginSuccess = (user: AdminUserData) => {
     setAdminUser(user);
     setLoginError(null);
