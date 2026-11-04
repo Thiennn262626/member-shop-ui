@@ -8,11 +8,11 @@ import type {
 } from '../types';
 
 export const SHOP_CONFIG: ShopConfig = {
-  shopName: 'Bake & Sip',
-  tagline: 'Tiệm Bánh Nóng & Đồ Uống Tươi',
+  shopName: 'Bánh Tráng Cô Ba',
+  tagline: 'Bánh Tráng Trộn & Ăn Vặt Sài Gòn • Giá Học Sinh 15k - 25k',
   hotline: '0901 234 567',
   zaloPhone: '0901234567',
-  address: '68 Đường Hoa Sứ, Phường 7, Quận Phú Nhuận, TP.HCM',
+  address: '86/12 Đường Hoa Sứ, Phường 7, Quận Phú Nhuận, TP.HCM',
   pointToVndRatio: 1000,   // 1 Điểm = 1.000 VNĐ
   spendToPointRatio: 10000, // 10.000 VNĐ = 1 Điểm
   isOpen: true,
@@ -20,16 +20,16 @@ export const SHOP_CONFIG: ShopConfig = {
   bank: {
     bankName: 'MBBank (Ngân Hàng Quân Đội)',
     accountNumber: '0901234567',
-    accountHolder: 'TIEM BANH BAKE AND SIP',
+    accountHolder: 'BANH TRANG CO BA',
   },
   delivery: {
     enabled: true,
     maxDistanceKm: 10,
-    areaNote: 'Chỉ nhận giao hàng trong bán kính 10km quanh khu vực Phú Nhuận & lân cận',
+    areaNote: 'Giao nhanh bánh tráng nóng giòn quanh khu vực Phú Nhuận, Bình Thạnh, Q.1, Q.3',
     tiers: [
-      { id: 'tier-1', minOrder: 0, maxOrder: 99999, fee: 20000, label: 'Đơn dưới 100.000đ (Phí ship 20k)' },
-      { id: 'tier-2', minOrder: 100000, maxOrder: 199999, fee: 10000, label: 'Đơn từ 100.000đ - 199.999đ (Phí ship 10k)' },
-      { id: 'tier-3', minOrder: 200000, fee: 0, label: 'Đơn từ 200.000đ trở lên (Freeship 0đ)' },
+      { id: 'tier-1', minOrder: 0, maxOrder: 49999, fee: 15000, label: 'Đơn dưới 50.000đ (Phí ship 15k)' },
+      { id: 'tier-2', minOrder: 50000, maxOrder: 99999, fee: 10000, label: 'Đơn từ 50.000đ - 99.999đ (Phí ship 10k)' },
+      { id: 'tier-3', minOrder: 100000, fee: 0, label: 'Đơn từ 100.000đ trở lên (Freeship 0đ)' },
     ],
   },
 };
@@ -38,23 +38,23 @@ export const ORDER_STATUS_MAP: Record<OrderStatus, OrderStatusInfo> = {
   pending: {
     status: 'pending',
     step: 1,
-    label: '1. Đơn tạm (Chờ duyệt)',
+    label: '1. Đơn tạm (Chờ tiệm nhận)',
     badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
-    description: 'Tiệm đã lưu đơn tạm. Hãy gửi mã đơn này qua Zalo để tiệm xác nhận món và bắt đầu làm bánh nhé!',
+    description: 'Tiệm đã lưu đơn tạm. Hãy gửi mã đơn này qua Zalo để tiệm xác nhận món và bắt đầu trộn bánh tráng nhé!',
   },
   confirmed: {
     status: 'confirmed',
     step: 2,
-    label: '2. Đang chuẩn bị bánh',
+    label: '2. Đang chuẩn bị món',
     badgeClass: 'bg-sky-100 text-sky-900 border-sky-300',
-    description: 'Tiệm đã xác nhận đơn và đang chuẩn bị món. Bạn có thể quét mã chuyển tiền cho tiệm bên dưới!',
+    description: 'Tiệm đã nhận đơn và đang trộn bánh tráng/pha chế nước uống. Bạn có thể quét mã chuyển khoản bên dưới!',
   },
   shipping: {
     status: 'shipping',
     step: 3,
     label: '3. Đang giao hàng',
     badgeClass: 'bg-indigo-100 text-indigo-900 border-indigo-300',
-    description: 'Bánh đã ra lò nóng hổi và đang trên đường giao đến bạn. Hãy để ý điện thoại của shipper nhé!',
+    description: 'Món ăn đã đóng gói cẩn thận và đang trên đường giao đến bạn. Hãy để ý điện thoại của shipper nhé!',
   },
   completed: {
     status: 'completed',
@@ -91,9 +91,9 @@ export const TIER_CONFIG: Record<MemberTier, TierBenefit> = {
   SILVER: {
     tier: 'SILVER',
     label: 'Hội Viên Bạc',
-    minSpent: 300000,
+    minSpent: 200000,
     pointMultiplier: 1.15,
-    perks: ['Tích điểm x1.15 lần', 'Giảm 10% tuần sinh nhật', 'Được ưu tiên làm bánh mới'],
+    perks: ['Tích điểm x1.15 lần', 'Tặng 1 bịch bánh tráng tuần sinh nhật', 'Ưu tiên làm món trước'],
     badgeColor: 'bg-slate-200 text-slate-800 border-slate-400',
     gradientClass: 'from-slate-700 via-slate-800 to-slate-900',
     cardStyle: {
@@ -106,9 +106,9 @@ export const TIER_CONFIG: Record<MemberTier, TierBenefit> = {
   GOLD: {
     tier: 'GOLD',
     label: 'Hội Viên Vàng',
-    minSpent: 1200000,
+    minSpent: 600000,
     pointMultiplier: 1.3,
-    perks: ['Tích điểm x1.3 lần', 'Tặng 1 ly nước khi mua từ 2 bánh', 'Freeship đơn Zalo từ 100k'],
+    perks: ['Tích điểm x1.3 lần', 'Tặng 1 ly trà tắc khi mua từ 2 phần bánh tráng', 'Freeship đơn Zalo từ 60k'],
     badgeColor: 'bg-yellow-100 text-yellow-800 border-yellow-400',
     gradientClass: 'from-amber-600 via-yellow-600 to-amber-800',
     cardStyle: {
@@ -121,9 +121,9 @@ export const TIER_CONFIG: Record<MemberTier, TierBenefit> = {
   DIAMOND: {
     tier: 'DIAMOND',
     label: 'VIP Kim Cương',
-    minSpent: 3000000,
+    minSpent: 1500000,
     pointMultiplier: 1.5,
-    perks: ['Tích điểm x1.5 lần siêu tốc', 'Tặng hộp bánh sinh nhật riêng biệt', 'Thử miễn phí món mới trước khi ra mắt'],
+    perks: ['Tích điểm x1.5 lần siêu tốc', 'Tặng combo ăn vặt đặc biệt sinh nhật', 'Thử miễn phí món mới trước khi mở bán'],
     badgeColor: 'bg-purple-100 text-purple-900 border-purple-400',
     gradientClass: 'from-purple-900 via-stone-900 to-indigo-950',
     cardStyle: {
@@ -142,166 +142,71 @@ export function calculateTier(totalSpent: number): MemberTier {
   return 'MEMBER';
 }
 
-export const DRINK_TEA_OPTION_GROUPS: ItemOptionGroup[] = [
-  {
-    id: 'size',
-    name: 'Chọn Kích Thước (Size Ly)',
-    required: true,
-    selection: 'only',
-    options: [
-      { id: 'size-m', name: 'Size M (Vừa)', price: 0, isDefault: true },
-      { id: 'size-l', name: 'Size L (Lớn)', price: 6000 },
-    ],
-  },
-  {
-    id: 'sugar',
-    name: 'Mức Ngọt / Đường',
-    required: true,
-    selection: 'only',
-    options: [
-      { id: 'sugar-100', name: '100% đường (Tiêu chuẩn)', price: 0, isDefault: true },
-      { id: 'sugar-70', name: '70% đường', price: 0 },
-      { id: 'sugar-50', name: '50% đường (Ít ngọt)', price: 0 },
-      { id: 'sugar-0', name: 'Không đường', price: 0 },
-    ],
-  },
-  {
-    id: 'ice',
-    name: 'Lượng Đá',
-    required: true,
-    selection: 'only',
-    options: [
-      { id: 'ice-100', name: '100% đá (Tiêu chuẩn)', price: 0, isDefault: true },
-      { id: 'ice-70', name: '70% đá', price: 0 },
-      { id: 'ice-50', name: '50% đá (Ít đá)', price: 0 },
-      { id: 'ice-separate', name: 'Để đá riêng mang đi xa', price: 0 },
-      { id: 'ice-0', name: 'Không đá', price: 0 },
-    ],
-  },
-  {
-    id: 'toppings',
-    name: 'Topping Thêm',
-    required: false,
-    selection: 'many',
-    options: [
-      { id: 'top-pearl', name: 'Trân Châu Hoàng Kim', price: 6000 },
-      { id: 'top-cheese', name: 'Kem Phô Mai Macchiato', price: 10000 },
-      { id: 'top-chestnut', name: 'Thạch Củ Năng Giòn', price: 6000 },
-      { id: 'top-peach', name: 'Đào Miếng Thêm (3 lát)', price: 8000 },
-    ],
-  },
-];
+// --- OPTION GROUPS PRESETS CHO BÁNH TRÁNG & ĂN VẶT ---
+export const SPICE_LEVEL_GROUP: ItemOptionGroup = {
+  id: 'spice',
+  name: 'Mức Độ Cay',
+  required: true,
+  selection: 'only',
+  options: [
+    { id: 'sp-mild', name: 'Cay vừa (Tiêu chuẩn thơm ngon)', price: 0, isDefault: true },
+    { id: 'sp-none', name: 'Không cay (Không bỏ ớt sa tế)', price: 0 },
+    { id: 'sp-hot', name: 'Siêu cay (Hít hà tê tái)', price: 0 },
+  ],
+};
 
-export const DRINK_COFFEE_OPTION_GROUPS: ItemOptionGroup[] = [
-  {
-    id: 'size',
-    name: 'Kích Thước Cà Phê',
-    required: true,
-    selection: 'only',
-    options: [
-      { id: 'size-reg', name: 'Ly Tiêu Chuẩn', price: 0, isDefault: true },
-      { id: 'size-large', name: 'Ly Lớn (Double Shot đậm vị)', price: 8000 },
-    ],
-  },
-  {
-    id: 'sweet',
-    name: 'Độ Ngọt',
-    required: true,
-    selection: 'only',
-    options: [
-      { id: 'sw-normal', name: 'Ngọt vừa (Tiêu chuẩn)', price: 0, isDefault: true },
-      { id: 'sw-less', name: 'Ít ngọt', price: 0 },
-      { id: 'sw-none', name: 'Không đường', price: 0 },
-    ],
-  },
-  {
-    id: 'toppings',
-    name: 'Topping Thêm',
-    required: false,
-    selection: 'many',
-    options: [
-      { id: 'top-saltcream', name: 'Thêm Lớp Kem Muối Béo', price: 8000 },
-      { id: 'top-jelly', name: 'Thạch Cà Phê Đắng Nhẹ', price: 6000 },
-    ],
-  },
-];
+export const CUSTOM_NOTE_GROUP: ItemOptionGroup = {
+  id: 'custom',
+  name: 'Lưu Ý Khẩu Vị',
+  required: false,
+  selection: 'many',
+  options: [
+    { id: 'no-coriander', name: 'Không lấy rau răm', price: 0 },
+    { id: 'no-onion', name: 'Không lấy hành phi', price: 0 },
+    { id: 'sauce-separate', name: 'Để nước sốt riêng mang đi xa', price: 0 },
+  ],
+};
 
-export const BAKERY_SAVORY_OPTION_GROUPS: ItemOptionGroup[] = [
-  {
-    id: 'heat',
-    name: 'Yêu Cầu Độ Nóng Bánh',
-    required: true,
-    selection: 'only',
-    options: [
-      { id: 'heat-warm', name: 'Nướng nóng giòn tại lò (Khuyên dùng)', price: 0, isDefault: true },
-      { id: 'heat-room', name: 'Nhiệt độ thường (Để tự hâm)', price: 0 },
-    ],
-  },
-  {
-    id: 'addons',
-    name: 'Topping & Phô Mai Kèm Thêm',
-    required: false,
-    selection: 'many',
-    options: [
-      { id: 'add-cheese-sauce', name: 'Thêm Sốt Phô Mai Chảy', price: 8000 },
-      { id: 'add-mozzarella', name: 'Phô Mai Mozzarella Kéo Sợi', price: 10000 },
-      { id: 'add-floss', name: 'Chà Bông Gà Cay Xé Sợi', price: 6000 },
-    ],
-  },
-];
+export const TOPPING_EXTRA_GROUP: ItemOptionGroup = {
+  id: 'toppings',
+  name: 'Topping Thêm (Ăn Cực Đã)',
+  required: false,
+  selection: 'many',
+  options: [
+    { id: 'top-quail', name: 'Thêm 3 Trứng Cút Lòng Đào', price: 5000 },
+    { id: 'top-beef', name: 'Thêm Khô Bò Đen Xé Sợi', price: 5000 },
+    { id: 'top-chicken', name: 'Thêm Khô Gà Lá Chanh', price: 5000 },
+    { id: 'top-butter', name: 'Thêm Bịch Sốt Bơ Béo', price: 5000 },
+    { id: 'top-mango', name: 'Thêm Xoài Chua Bào Sợi', price: 3000 },
+    { id: 'top-shrimp', name: 'Thêm Tép Sấy Giòn Tan', price: 3000 },
+  ],
+};
 
-export const BAKERY_SWEET_OPTION_GROUPS: ItemOptionGroup[] = [
-  {
-    id: 'heat',
-    name: 'Yêu Cầu Hâm Nóng',
-    required: true,
-    selection: 'only',
-    options: [
-      { id: 'heat-bake', name: 'Nướng giòn thơm bơ tại lò', price: 0, isDefault: true },
-      { id: 'heat-normal', name: 'Để nguội tự nhiên', price: 0 },
-    ],
-  },
-  {
-    id: 'sauces',
-    name: 'Sốt & Topping Ngọt Thêm',
-    required: false,
-    selection: 'many',
-    options: [
-      { id: 'sc-caramel', name: 'Sốt Caramel Muối', price: 6000 },
-      { id: 'sc-strawberry', name: 'Mứt Dâu Tây Pháp', price: 6000 },
-      { id: 'sc-almond', name: 'Hạnh Nhân Lát Nướng Giòn', price: 6000 },
-    ],
-  },
-];
+export const DRINK_SWEET_GROUP: ItemOptionGroup = {
+  id: 'drink-sweet',
+  name: 'Độ Ngọt',
+  required: true,
+  selection: 'only',
+  options: [
+    { id: 'sw-100', name: '100% đường (Vừa miệng)', price: 0, isDefault: true },
+    { id: 'sw-50', name: '50% đường (Ít ngọt thanh mát)', price: 0 },
+  ],
+};
 
-export const CAKE_DESSERT_OPTION_GROUPS: ItemOptionGroup[] = [
-  {
-    id: 'box',
-    name: 'Quy Cách Đóng Gói',
-    required: true,
-    selection: 'only',
-    options: [
-      { id: 'box-standard', name: 'Hộp Tiêu Chuẩn Cá Nhân', price: 0, isDefault: true },
-      { id: 'box-gift', name: 'Hộp Thiếc Quà Tặng Sang Trọng', price: 15000 },
-    ],
-  },
-  {
-    id: 'accessories',
-    name: 'Phụ Kiện Tiệc Kèm Thêm',
-    required: false,
-    selection: 'many',
-    options: [
-      { id: 'acc-icegel', name: 'Túi Đá Gel Giữ Lạnh (Đi xa >30p)', price: 5000 },
-      { id: 'acc-candle', name: 'Bộ Nến Sinh Nhật Ánh Kim', price: 5000 },
-      { id: 'acc-card', name: 'Thiệp Ghi Lời Chúc Viết Tay', price: 5000 },
-    ],
-  },
-];
+export const DRINK_ICE_GROUP: ItemOptionGroup = {
+  id: 'drink-ice',
+  name: 'Lượng Đá',
+  required: true,
+  selection: 'only',
+  options: [
+    { id: 'ice-100', name: 'Đầy đá mát lạnh', price: 0, isDefault: true },
+    { id: 'ice-separate', name: 'Để đá riêng đi xa', price: 0 },
+  ],
+};
 
 export const OPTION_PRESETS = [
-  { id: 'tea', label: '🧋 Preset Trà & Nước Trái Cây (Size, Đường, Đá, Topping)', groups: DRINK_TEA_OPTION_GROUPS },
-  { id: 'coffee', label: '☕ Preset Cà Phê (Size, Độ ngọt, Kem muối, Thạch)', groups: DRINK_COFFEE_OPTION_GROUPS },
-  { id: 'savory', label: '🥐 Preset Bánh Mì & Mặn (Độ nóng lò, Phô mai, Chà bông)', groups: BAKERY_SAVORY_OPTION_GROUPS },
-  { id: 'sweet', label: '🍰 Preset Bánh Ngọt (Hâm nóng, Sốt dâu/hạnh nhân)', groups: BAKERY_SWEET_OPTION_GROUPS },
-  { id: 'cake', label: '🎂 Preset Bánh Kem & Tiệc (Hộp quà, Nến, Thiệp)', groups: CAKE_DESSERT_OPTION_GROUPS },
+  { id: 'btt', label: '🌶️ Preset Bánh Tráng Trộn (Độ cay, Khẩu vị, Topping)', groups: [SPICE_LEVEL_GROUP, CUSTOM_NOTE_GROUP, TOPPING_EXTRA_GROUP] },
+  { id: 'btc', label: '🌯 Preset Bánh Tráng Cuốn (Sốt chấm, Topping thêm)', groups: [SPICE_LEVEL_GROUP, CUSTOM_NOTE_GROUP, TOPPING_EXTRA_GROUP] },
+  { id: 'btn', label: '🥐 Preset Bánh Tráng Nướng (Độ cay, Mỡ hành)', groups: [SPICE_LEVEL_GROUP] },
+  { id: 'drinks', label: '🧋 Preset Đồ Uống Giải Khát (Độ ngọt, Lượng đá)', groups: [DRINK_SWEET_GROUP, DRINK_ICE_GROUP] },
 ];

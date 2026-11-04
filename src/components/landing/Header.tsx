@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMemberLookup, onOpenWheel,
           {/* Brand Logo & Name */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 flex items-center justify-center font-bold shadow-md shadow-amber-500/20 text-base sm:text-lg shrink-0">
-              🥐
+              🌶️
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">

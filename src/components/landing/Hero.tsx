@@ -38,12 +38,12 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
             {/* Social Proof Pill (Chỉ hiện trên desktop/tablet để tiết kiệm chiều dọc điện thoại) */}
             <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-amber-200 shadow-xs text-xs font-semibold text-amber-900 mx-auto lg:mx-0">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Tiệm đang mở cửa &bull; Bánh nướng mới mỗi sáng</span>
+              <span>Tiệm đang mở cửa &bull; Bánh tráng phơi sương & ăn vặt 15k - 25k</span>
             </div>
 
             {/* Main Headline (Font size tinh gọn, chuẩn app hiện đại trên mobile) */}
             <h1 className="text-xl sm:text-5xl font-serif font-extrabold text-stone-900 tracking-tight leading-tight">
-              Mê Bánh Ngon, <br className="hidden sm:inline" />
+              Ghiền Bánh Tráng, <br className="hidden sm:inline" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600">
                 Tích Điểm Giảm Đơn
               </span>{' '}
@@ -52,12 +52,12 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
 
             {/* Description (Rút gọn tối đa trên mobile để khách thấy thực đơn ngay) */}
             <p className="hidden sm:block text-sm sm:text-base text-stone-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Thưởng thức bánh sừng bò bơ Pháp, bánh mì phô mai béo ngậy cùng trà sữa ô long nướng thơm lừng. 
-              Mỗi <strong className="text-stone-900">10.000đ</strong> hóa đơn = <strong className="text-amber-700">1 điểm thưởng</strong>, 
+              Bánh tráng phơi sương Tây Ninh dẻo mềm, ngập tràn khô bò trứng cút sốt bơ me cay béo cùng trà tắc khổng lồ mát lạnh. 
+              Giá học sinh chỉ từ <strong className="text-amber-800">15.000đ - 25.000đ</strong>. Mỗi <strong className="text-stone-900">10.000đ</strong> hóa đơn = <strong className="text-amber-700">1 điểm thưởng</strong>, 
               trừ tiền trực tiếp khi chốt đơn qua Zalo!
             </p>
             <p className="sm:hidden text-xs text-stone-600 leading-tight max-w-xs mx-auto">
-              Mỗi 10k tích 1 điểm &bull; Đổi bánh 0đ hoặc trừ tiền khi chốt đơn!
+              Bánh tráng trộn 15k-25k &bull; Tích 10k = 1 điểm trừ tiền mặt khi chốt đơn!
             </p>
 
             {/* Action Buttons */}
@@ -66,7 +66,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                 onClick={onScrollToCatalog}
                 className="inline-flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 cursor-pointer"
               >
-                <span>Xem Menu Bánh</span>
+                <span>Xem Menu Ăn Vặt</span>
                 <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
               </button>
 
