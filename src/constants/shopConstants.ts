@@ -8,28 +8,28 @@ import type {
 } from '../types';
 
 export const SHOP_CONFIG: ShopConfig = {
-  shopName: 'Bánh Tráng Cô Ba',
-  tagline: 'Bánh Tráng Trộn & Ăn Vặt Sài Gòn • Giá Học Sinh 15k - 25k',
-  hotline: '0901 234 567',
-  zaloPhone: '0901234567',
-  address: '86/12 Đường Hoa Sứ, Phường 7, Quận Phú Nhuận, TP.HCM',
-  pointToVndRatio: 1000,   // 1 Điểm = 1.000 VNĐ
+  shopName: 'Bánh Tráng Cậu Hai',
+  tagline: 'Bánh Tráng Trộn & Ăn Vặt Nha Trang • Giá Học Sinh 15k - 25k',
+  hotline: '0334395313',
+  zaloPhone: '0334395313',
+  address: '7C Đ. Tô Hiến Thành, Nha Trang, Khánh Hòa',
+  pointToVndRatio: 500,    // 1 Điểm = 500 VNĐ
   spendToPointRatio: 10000, // 10.000 VNĐ = 1 Điểm
   isOpen: true,
   pauseReason: '',
   bank: {
     bankName: 'MBBank (Ngân Hàng Quân Đội)',
-    accountNumber: '0901234567',
-    accountHolder: 'BANH TRANG CO BA',
+    accountNumber: '0334395313',
+    accountHolder: 'NGUYEN DINH THIEN',
   },
   delivery: {
     enabled: true,
     maxDistanceKm: 10,
-    areaNote: 'Giao nhanh bánh tráng nóng giòn quanh khu vực Phú Nhuận, Bình Thạnh, Q.1, Q.3',
+    areaNote: 'Giao nhanh quanh khu vực Nha Trang',
     tiers: [
       { id: 'tier-1', minOrder: 0, maxOrder: 49999, fee: 15000, label: 'Đơn dưới 50.000đ (Phí ship 15k)' },
       { id: 'tier-2', minOrder: 50000, maxOrder: 99999, fee: 10000, label: 'Đơn từ 50.000đ - 99.999đ (Phí ship 10k)' },
-      { id: 'tier-3', minOrder: 100000, fee: 0, label: 'Đơn từ 100.000đ trở lên (Freeship 0đ)' },
+      { id: 'tier-3', minOrder: 150000, fee: 0, label: 'Đơn từ 150.000đ trở lên (Freeship 0đ)' },
     ],
   },
 };

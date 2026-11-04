@@ -1,4 +1,11 @@
-import { http, setAccessToken, clearAccessToken, API_BASE } from './httpClient';
+import {
+  publicApi,
+  authApi,
+  setAccessToken,
+  setRefreshToken,
+  clearTokens,
+  API_BASE,
+} from './httpClient';
 import type {
   CashShift,
   Customer,
@@ -57,55 +64,35 @@ class ApiStoreService {
     }
   }
 
-  // --- PRODUCTS ---
+  // =========================================================================
+  // 1. PUBLIC APIS (Khách hàng & Landing Page - dùng publicApi)
+  // Không inject Auth Header, nhẹ nhàng, độc lập, không bị chặn bởi auth queue
+  // =========================================================================
+
+  // --- PRODUCTS (PUBLIC) ---
   async getProducts(onlyActive: boolean = false): Promise<Product[]> {
     const query = onlyActive ? '' : '?all=true';
-    const list = await http.get<Product[]>(`/v1/products${query}`);
+    const list = await publicApi.get<any, Product[]>(`/v1/products${query}`);
     return list || [];
   }
 
   async getProductById(id: string): Promise<Product | undefined> {
     try {
-      return await http.get<Product>(`/v1/products/${id}`);
+      return await publicApi.get<any, Product>(`/v1/products/${id}`);
     } catch {
       return undefined;
     }
   }
 
-  async addProduct(payload: Omit<Product, 'id' | 'updatedAt'>): Promise<Product> {
-    return await http.post<Product>('/admin/products', payload);
-  }
-
-  async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
-    return await http.put<Product>(`/admin/products/${id}`, updates);
-  }
-
-  async toggleProductStatus(id: string): Promise<Product> {
-    return await http.patch<Product>(`/admin/products/${id}/toggle`);
-  }
-
-  async deleteProduct(id: string): Promise<void> {
-    await http.delete(`/admin/products/${id}`);
-  }
-
-  // --- SHOP CONFIG ---
+  // --- SHOP CONFIG (PUBLIC) ---
   async getShopConfig(): Promise<ShopConfig> {
-    return await http.get<ShopConfig>('/v1/config');
+    return await publicApi.get<any, ShopConfig>('/v1/config');
   }
 
-  async updateShopConfig(updates: Partial<ShopConfig>): Promise<ShopConfig> {
-    return await http.put<ShopConfig>('/admin/config', updates);
-  }
-
-  // --- ORDERS ---
-  async getOrders(): Promise<Order[]> {
-    const list = await http.get<Order[]>('/admin/orders?limit=100');
-    return list || [];
-  }
-
+  // --- ORDERS (PUBLIC TRACKING & CREATION) ---
   async getOrderByCode(code: string): Promise<Order | undefined> {
     try {
-      const list = await http.get<Order[]>(`/v1/orders/track?code=${encodeURIComponent(code)}`);
+      const list = await publicApi.get<any, Order[]>(`/v1/orders/track?code=${encodeURIComponent(code)}`);
       return list?.[0];
     } catch {
       return undefined;
@@ -114,7 +101,7 @@ class ApiStoreService {
 
   async getOrdersByPhone(phone: string): Promise<Order[]> {
     try {
-      const list = await http.get<Order[]>(`/v1/orders/track?phone=${encodeURIComponent(phone)}`);
+      const list = await publicApi.get<any, Order[]>(`/v1/orders/track?phone=${encodeURIComponent(phone)}`);
       return list || [];
     } catch {
       return [];
@@ -134,43 +121,17 @@ class ApiStoreService {
     discountPointsUsed?: number;
     totalPointsRedeemedItems?: number;
   }): Promise<{ order: Order; customer: Customer }> {
-    const res = await http.post<{ order: Order; customer: Customer }>('/v1/orders', payload);
-    return res;
+    return await publicApi.post<any, { order: Order; customer: Customer }>('/v1/orders', payload);
   }
 
   async createPosOrder(payload: any): Promise<{ order: Order; customer: Customer }> {
-    const res = await http.post<{ order: Order; customer: Customer }>('/v1/pos/orders', payload);
-    return res;
+    return await publicApi.post<any, { order: Order; customer: Customer }>('/v1/pos/orders', payload);
   }
 
-  async updateOrderStatus(
-    orderCodeOrId: string,
-    updates: {
-      status?: Order['status'];
-      paymentStatus?: Order['paymentStatus'];
-      shipperInfo?: string;
-      discountPointsUsed?: number;
-    }
-  ): Promise<{ order: Order; customer: Customer }> {
-    // Nếu orderCodeOrId là code dạng #BS-xxxx thì tìm ID trước
-    let targetId = orderCodeOrId;
-    if (orderCodeOrId.startsWith('#')) {
-      const found = await this.getOrderByCode(orderCodeOrId);
-      if (found) {
-        targetId = found.id;
-      }
-    }
-    const res = await http.patch<{ order: Order; customer: Customer }>(
-      `/admin/orders/${targetId}/status`,
-      updates
-    );
-    return res;
-  }
-
-  // --- CUSTOMERS ---
+  // --- CUSTOMERS & LOYALTY (PUBLIC LOOKUP) ---
   async findCustomerByPhone(phone: string): Promise<Customer | undefined> {
     try {
-      const res = await http.get<{ customer: Customer; orders: Order[]; transactions: PointTransaction[] }>(
+      const res = await publicApi.get<any, { customer: Customer; orders: Order[]; transactions: PointTransaction[] }>(
         `/v1/customers/lookup?phone=${encodeURIComponent(phone)}`
       );
       return res?.customer;
@@ -181,7 +142,7 @@ class ApiStoreService {
 
   async getCustomerFullLookup(phone: string): Promise<{ customer: Customer; orders: Order[]; transactions: PointTransaction[] } | null> {
     try {
-      return await http.get<{ customer: Customer; orders: Order[]; transactions: PointTransaction[] }>(
+      return await publicApi.get<any, { customer: Customer; orders: Order[]; transactions: PointTransaction[] }>(
         `/v1/customers/lookup?phone=${encodeURIComponent(phone)}`
       );
     } catch {
@@ -189,31 +150,10 @@ class ApiStoreService {
     }
   }
 
-  async getCustomers(): Promise<Customer[]> {
-    const list = await http.get<Customer[]>('/admin/customers');
-    return list || [];
-  }
-
-  async getTransactions(_customerId: string): Promise<PointTransaction[]> {
-    return [];
-  }
-
-  async adjustCustomerPoints(customerId: string, pointsDelta: number, note: string): Promise<Customer> {
-    return await http.post<Customer>(`/admin/customers/${customerId}/adjust-points`, {
-      pointsDelta,
-      note,
-    });
-  }
-
-  // --- VOUCHERS ---
-  async getVouchers(): Promise<Voucher[]> {
-    const list = await http.get<Voucher[]>('/admin/vouchers');
-    return list || [];
-  }
-
+  // --- VOUCHERS (PUBLIC VALIDATE) ---
   async validateAndCalculateVoucher(code: string, subTotal: number): Promise<VoucherValidationResult> {
     try {
-      return await http.post<VoucherValidationResult>('/v1/vouchers/validate', {
+      return await publicApi.post<any, VoucherValidationResult>('/v1/vouchers/validate', {
         code,
         subTotal,
       });
@@ -226,58 +166,12 @@ class ApiStoreService {
     }
   }
 
-  async addVoucher(payload: Omit<Voucher, 'id' | 'usedCount' | 'createdAt'>): Promise<Voucher> {
-    return await http.post<Voucher>('/admin/vouchers', payload);
-  }
-
-  async updateVoucher(id: string, updates: Partial<Voucher>): Promise<Voucher> {
-    return await http.put<Voucher>(`/admin/vouchers/${id}`, updates);
-  }
-
-  async deleteVoucher(id: string): Promise<void> {
-    await http.delete(`/admin/vouchers/${id}`);
-  }
-
-  // --- SHIFTS ---
-  async getCurrentShift(): Promise<CashShift | null> {
-    try {
-      return await http.get<CashShift | null>('/admin/shifts/current');
-    } catch {
-      return null;
-    }
-  }
-
-  async openShift(payload: {
-    shiftName: string;
-    initialFloat: number;
-    notes?: string;
-  }): Promise<CashShift> {
-    return await http.post<CashShift>('/admin/shifts/open', payload);
-  }
-
-  async closeShift(
-    id: string,
-    actualCash: number,
-    notes?: string,
-    nextStaffName?: string
-  ): Promise<CashShift> {
-    return await http.post<CashShift>(`/admin/shifts/${id}/close`, {
-      actualCash,
-      notes,
-      nextStaffName,
-    });
-  }
-
-  async getShifts(): Promise<CashShift[]> {
-    const list = await http.get<CashShift[]>('/admin/shifts/history');
-    return list || [];
-  }
-
-  // --- STAFF & AUTH ---
+  // --- AUTH LOGIN (PUBLIC) ---
   async authenticateStaff(username: string, pinCode: string): Promise<AdminUserData | null> {
     try {
-      const res = await http.post<{
+      const res = await publicApi.post<any, {
         accessToken: string;
+        refreshToken?: string;
         expiresIn: number;
         user: {
           id: string;
@@ -291,6 +185,9 @@ class ApiStoreService {
 
       if (res?.accessToken) {
         setAccessToken(res.accessToken);
+        if (res.refreshToken) {
+          setRefreshToken(res.refreshToken);
+        }
         const userData: AdminUserData = {
           id: res.user.id,
           username: res.user.username,
@@ -309,53 +206,180 @@ class ApiStoreService {
     }
   }
 
-  async logout(): Promise<void> {
-    try {
-      await http.post('/v1/auth/logout');
-    } catch {
-      // Bỏ qua lỗi mạng khi logout
-    } finally {
-      clearAccessToken();
-      sessionStorage.removeItem('bake_sip_admin_user');
-    }
-  }
+  // =========================================================================
+  // 2. AUTHENTICATED APIS (Chủ quán & Quản lý POS - dùng authApi)
+  // Tự động gắn Bearer token, hỗ trợ auto-refresh token với Concurrency Mutex Queue
+  // =========================================================================
 
+  // --- AUTH ME & LOGOUT ---
   async getMe(): Promise<AdminUserData | null> {
     try {
-      return await http.get<AdminUserData>('/v1/auth/me');
+      return await authApi.get<any, AdminUserData>('/v1/auth/me');
     } catch {
       return null;
     }
   }
 
+  async logout(): Promise<void> {
+    try {
+      await authApi.post('/v1/auth/logout');
+    } catch {
+      // Bỏ qua lỗi mạng khi logout
+    } finally {
+      clearTokens();
+      sessionStorage.removeItem('bake_sip_admin_user');
+    }
+  }
+
+  // --- SHOP CONFIG (ADMIN OWNER) ---
+  async updateShopConfig(updates: Partial<ShopConfig>): Promise<ShopConfig> {
+    return await authApi.put<any, ShopConfig>('/admin/config', updates);
+  }
+
+  // --- PRODUCTS (ADMIN) ---
+  async addProduct(payload: Omit<Product, 'id' | 'updatedAt'>): Promise<Product> {
+    return await authApi.post<any, Product>('/admin/products', payload);
+  }
+
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+    return await authApi.put<any, Product>(`/admin/products/${id}`, updates);
+  }
+
+  async toggleProductStatus(id: string): Promise<Product> {
+    return await authApi.patch<any, Product>(`/admin/products/${id}/toggle`);
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await authApi.delete(`/admin/products/${id}`);
+  }
+
+  // --- ORDERS (ADMIN) ---
+  async getOrders(): Promise<Order[]> {
+    const list = await authApi.get<any, Order[]>('/admin/orders?limit=100');
+    return list || [];
+  }
+
+  async updateOrderStatus(
+    orderCodeOrId: string,
+    updates: {
+      status?: Order['status'];
+      paymentStatus?: Order['paymentStatus'];
+      shipperInfo?: string;
+      discountPointsUsed?: number;
+    }
+  ): Promise<{ order: Order; customer: Customer }> {
+    let targetId = orderCodeOrId;
+    if (orderCodeOrId.startsWith('#')) {
+      const found = await this.getOrderByCode(orderCodeOrId);
+      if (found) {
+        targetId = found.id;
+      }
+    }
+    return await authApi.patch<any, { order: Order; customer: Customer }>(
+      `/admin/orders/${targetId}/status`,
+      updates
+    );
+  }
+
+  // --- CUSTOMERS (ADMIN) ---
+  async getCustomers(): Promise<Customer[]> {
+    const list = await authApi.get<any, Customer[]>('/admin/customers');
+    return list || [];
+  }
+
+  async getTransactions(_customerId: string): Promise<PointTransaction[]> {
+    return [];
+  }
+
+  async adjustCustomerPoints(customerId: string, pointsDelta: number, note: string): Promise<Customer> {
+    return await authApi.post<any, Customer>(`/admin/customers/${customerId}/adjust-points`, {
+      pointsDelta,
+      note,
+    });
+  }
+
+  // --- VOUCHERS (ADMIN) ---
+  async getVouchers(): Promise<Voucher[]> {
+    const list = await authApi.get<any, Voucher[]>('/admin/vouchers');
+    return list || [];
+  }
+
+  async addVoucher(payload: Omit<Voucher, 'id' | 'usedCount' | 'createdAt'>): Promise<Voucher> {
+    return await authApi.post<any, Voucher>('/admin/vouchers', payload);
+  }
+
+  async updateVoucher(id: string, updates: Partial<Voucher>): Promise<Voucher> {
+    return await authApi.put<any, Voucher>(`/admin/vouchers/${id}`, updates);
+  }
+
+  async deleteVoucher(id: string): Promise<void> {
+    await authApi.delete(`/admin/vouchers/${id}`);
+  }
+
+  // --- CASH SHIFTS (ADMIN) ---
+  async getCurrentShift(): Promise<CashShift | null> {
+    try {
+      return await authApi.get<any, CashShift | null>('/admin/shifts/current');
+    } catch {
+      return null;
+    }
+  }
+
+  async openShift(payload: {
+    shiftName: string;
+    initialFloat: number;
+    notes?: string;
+  }): Promise<CashShift> {
+    return await authApi.post<any, CashShift>('/admin/shifts/open', payload);
+  }
+
+  async closeShift(
+    id: string,
+    actualCash: number,
+    notes?: string,
+    nextStaffName?: string
+  ): Promise<CashShift> {
+    return await authApi.post<any, CashShift>(`/admin/shifts/${id}/close`, {
+      actualCash,
+      notes,
+      nextStaffName,
+    });
+  }
+
+  async getShifts(): Promise<CashShift[]> {
+    const list = await authApi.get<any, CashShift[]>('/admin/shifts/history');
+    return list || [];
+  }
+
+  // --- STAFF ACCOUNTS (ADMIN) ---
   async getStaffAccounts(): Promise<StaffAccount[]> {
-    const list = await http.get<StaffAccount[]>('/admin/staff');
+    const list = await authApi.get<any, StaffAccount[]>('/admin/staff');
     return list || [];
   }
 
   async addStaffAccount(payload: any): Promise<StaffAccount> {
-    return await http.post<StaffAccount>('/admin/staff', payload);
+    return await authApi.post<any, StaffAccount>('/admin/staff', payload);
   }
 
   async updateStaffAccount(id: string, updates: any): Promise<StaffAccount> {
-    return await http.put<StaffAccount>(`/admin/staff/${id}`, updates);
+    return await authApi.put<any, StaffAccount>(`/admin/staff/${id}`, updates);
   }
 
   async toggleStaffStatus(id: string): Promise<StaffAccount> {
-    return await http.patch<StaffAccount>(`/admin/staff/${id}/toggle`);
+    return await authApi.patch<any, StaffAccount>(`/admin/staff/${id}/toggle`);
   }
 
-  // --- WORK SHIFTS ---
+  // --- WORK SHIFTS & ROSTER (ADMIN) ---
   async getWorkShifts(month?: string, staffId?: string): Promise<WorkShift[]> {
     const params = new URLSearchParams();
     if (month) params.append('month', month);
     if (staffId) params.append('staffId', staffId);
-    const list = await http.get<WorkShift[]>(`/admin/work-shifts?${params.toString()}`);
+    const list = await authApi.get<any, WorkShift[]>(`/admin/work-shifts?${params.toString()}`);
     return list || [];
   }
 
   async checkInWorkShift(id: string): Promise<WorkShift> {
-    return await http.post<WorkShift>(`/admin/work-shifts/${id}/check-in`);
+    return await authApi.post<any, WorkShift>(`/admin/work-shifts/${id}/check-in`);
   }
 
   async confirmDailyAttendance(
@@ -364,7 +388,7 @@ class ApiStoreService {
     status: WorkShiftStatus = 'completed',
     notes?: string
   ): Promise<WorkShift> {
-    return await http.patch<WorkShift>(`/admin/work-shifts/${id}/attendance`, {
+    return await authApi.patch<any, WorkShift>(`/admin/work-shifts/${id}/attendance`, {
       actualHours,
       status,
       notes,
@@ -372,17 +396,17 @@ class ApiStoreService {
   }
 
   async saveMonthlyRoster(staffId: string, month: string, assignments: any[]): Promise<any> {
-    return await http.post('/admin/work-shifts/roster', {
+    return await authApi.post('/admin/work-shifts/roster', {
       staffId,
       month,
       assignments,
     });
   }
 
-  // --- PAYROLL ---
+  // --- PAYROLL (ADMIN) ---
   async getMonthlyPayrolls(month?: string): Promise<MonthlyPayrollSummary[]> {
     const params = month ? `?month=${encodeURIComponent(month)}` : '';
-    const list = await http.get<MonthlyPayrollSummary[]>(`/admin/payroll${params}`);
+    const list = await authApi.get<any, MonthlyPayrollSummary[]>(`/admin/payroll${params}`);
     return list || [];
   }
 
@@ -392,10 +416,13 @@ class ApiStoreService {
     allowance: number,
     deduction: number
   ): Promise<MonthlyPayrollSummary> {
-    return await http.post<MonthlyPayrollSummary>(`/admin/payroll/adjust/${staffId}?month=${encodeURIComponent(month)}`, {
-      allowance,
-      deduction,
-    });
+    return await authApi.post<any, MonthlyPayrollSummary>(
+      `/admin/payroll/adjust/${staffId}?month=${encodeURIComponent(month)}`,
+      {
+        allowance,
+        deduction,
+      }
+    );
   }
 }
 

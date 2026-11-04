@@ -1,20 +1,40 @@
-// HTTP Client chuyên dụng kết nối Go Backend với cơ chế Auto-Refresh Token và HttpOnly Cookie
+import axios, {
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 
+// Base URL kết nối Go Backend
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
-const TOKEN_KEY = 'member_shop_access_token';
+// Storage Keys
+const ACCESS_TOKEN_KEY = 'member_shop_access_token';
+const REFRESH_TOKEN_KEY = 'member_shop_refresh_token';
 
 export const getAccessToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
 };
 
 export const setAccessToken = (token: string): void => {
-  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(ACCESS_TOKEN_KEY, token);
 };
 
-export const clearAccessToken = (): void => {
-  localStorage.removeItem(TOKEN_KEY);
+export const getRefreshToken = (): string | null => {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
 };
+
+export const setRefreshToken = (token: string): void => {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+};
+
+export const clearTokens = (): void => {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+};
+
+// Alias tương thích ngược cho codebase cũ
+export const clearAccessToken = clearTokens;
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -31,135 +51,251 @@ export interface ApiResponse<T = any> {
   timestamp?: string;
 }
 
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
-
-const onTokenRefreshed = (token: string) => {
-  refreshSubscribers.forEach((callback) => callback(token));
-  refreshSubscribers = [];
-};
-
-const addRefreshSubscriber = (callback: (token: string) => void) => {
-  refreshSubscribers.push(callback);
-};
-
-export async function request<T = any>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
-
-  const headers: Record<string, string> = {
+// ---------------------------------------------------------------------------
+// 1. PUBLIC AXIOS INSTANCE
+// Dùng cho các API công khai: Xem thực đơn, xem thông tin quán, tra cứu đơn,
+// đăng nhập (login) và làm mới token (refresh).
+// Không tự động inject Authorization token để đảm bảo hiệu năng và bảo mật.
+// ---------------------------------------------------------------------------
+export const publicApi: AxiosInstance = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
     Accept: 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
+  },
+  withCredentials: true, // Cho phép trình duyệt gửi/nhận HTTP-Only Cookie refresh_token
+  timeout: 15000,
+});
 
-  if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
-    headers['Content-Type'] = 'application/json';
+publicApi.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Tự động unwrap envelope `{ success: true, data: ... }` để trả về trực tiếp `data`
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return response.data.data;
+    }
+    return response.data;
+  },
+  (error) => {
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.code ||
+      error.message ||
+      'Yêu cầu máy chủ thất bại';
+    const customErr = new Error(message);
+    (customErr as any).code = error.response?.data?.code || 'NETWORK_ERROR';
+    (customErr as any).status = error.response?.status;
+    (customErr as any).data = error.response?.data;
+    return Promise.reject(customErr);
   }
+);
 
-  const token = getAccessToken();
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+// ---------------------------------------------------------------------------
+// 2. AUTHENTICATED AXIOS INSTANCE
+// Dùng cho các API yêu cầu xác thực: /admin/..., /v1/auth/me, /v1/auth/logout.
+// Tự động inject Bearer Token và quản lý hàng đợi Refresh Token (Concurrency Mutex)
+// Đảm bảo khi có nhiều API cùng lúc gặp lỗi 401 thì chỉ gọi 1 request refresh duy nhất!
+// ---------------------------------------------------------------------------
+export const authApi: AxiosInstance = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+  withCredentials: true, // Gửi HTTP-Only Cookie
+  timeout: 20000,
+});
 
-  const fetchOptions: RequestInit = {
-    ...options,
-    headers,
-    credentials: 'include', // Bắt buộc để trình duyệt tự gửi HTTP-Only Cookie refresh_token
-  };
+// Request Interceptor: Luôn tự động gắn Bearer Token nếu có
+authApi.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = getAccessToken();
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-  try {
-    let response = await fetch(url, fetchOptions);
+// Trạng thái điều phối Refresh Token Concurrency (Mutex Queue)
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+  config: InternalAxiosRequestConfig;
+}> = [];
 
-    // Xử lý tự động Refresh Token khi gặp lỗi 401 Unauthorized
-    if (response.status === 401 && !path.includes('/auth/refresh') && !path.includes('/auth/login')) {
-      if (!isRefreshing) {
-        isRefreshing = true;
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.config.headers.Authorization = `Bearer ${token}`;
+      prom.resolve(authApi(prom.config));
+    }
+  });
+  failedQueue = [];
+};
 
-        try {
-          const refreshRes = await fetch(`${API_BASE}/v1/auth/refresh`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { Accept: 'application/json' },
-          });
+// Response Interceptor: Xử lý mượt mà lỗi 401 bằng hàng đợi Promise
+authApi.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Unwrap envelope `{ success: true, data: ... }`
+    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      return response.data.data;
+    }
+    return response.data;
+  },
+  async (error) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-          if (refreshRes.ok) {
-            const refreshData: ApiResponse<{ accessToken: string }> = await refreshRes.json();
-            const newToken = refreshData.data?.accessToken;
-            if (newToken) {
-              setAccessToken(newToken);
-              onTokenRefreshed(newToken);
-              isRefreshing = false;
+    // Nếu không có config hoặc lỗi không phải 401 Unauthorized
+    if (!originalRequest || error.response?.status !== 401) {
+      const message =
+        error.response?.data?.message ||
+        error.response?.data?.code ||
+        error.message ||
+        'Yêu cầu xác thực thất bại';
+      const customErr = new Error(message);
+      (customErr as any).code = error.response?.data?.code || 'AUTH_ERROR';
+      (customErr as any).status = error.response?.status;
+      (customErr as any).data = error.response?.data;
+      return Promise.reject(customErr);
+    }
 
-              // Thử lại request gốc với token mới
-              headers['Authorization'] = `Bearer ${newToken}`;
-              response = await fetch(url, { ...fetchOptions, headers });
-            } else {
-              throw new Error('Không nhận được Access Token mới');
-            }
-          } else {
-            clearAccessToken();
-            sessionStorage.removeItem('bake_sip_admin_user');
-            isRefreshing = false;
-          }
-        } catch (e) {
-          clearAccessToken();
-          sessionStorage.removeItem('bake_sip_admin_user');
-          isRefreshing = false;
-        }
-      } else {
-        // Đang có tiến trình refresh token chạy ngầm, chờ nhận token mới rồi retry
-        const retryToken = await new Promise<string>((resolve) => {
-          addRefreshSubscriber(resolve);
-        });
-        headers['Authorization'] = `Bearer ${retryToken}`;
-        response = await fetch(url, { ...fetchOptions, headers });
+    // Không kích hoạt refresh nếu chính request refresh hoặc login bị lỗi
+    if (
+      originalRequest.url?.includes('/v1/auth/login') ||
+      originalRequest.url?.includes('/v1/auth/refresh')
+    ) {
+      return Promise.reject(error);
+    }
+
+    // Đã thử retry lần thứ 2 rồi mà vẫn 401 -> Session hết hạn thực sự
+    if (originalRequest._retry) {
+      clearTokens();
+      sessionStorage.removeItem('bake_sip_admin_user');
+      window.dispatchEvent(new CustomEvent('shop_auth_session_expired'));
+      return Promise.reject(new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'));
+    }
+
+    // TRƯỜNG HỢP 1: Đã có 1 request refresh đang chạy ngầm
+    // => Không kích hoạt thêm request refresh nào nữa (tiết kiệm hiệu năng tối đa)
+    // => Xếp request này vào hàng đợi Promise và chờ nhận token mới
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject, config: originalRequest });
+      });
+    }
+
+    // TRƯỜNG HỢP 2: Request đầu tiên phát hiện 401
+    // => Khởi xướng tiến trình Refresh Token duy nhất
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const storedRefreshToken = getRefreshToken();
+
+      // Gọi API refresh token (Public instance, gửi kèm HTTP-Only cookie và fallback header/body)
+      const refreshPayload = storedRefreshToken ? { refreshToken: storedRefreshToken } : {};
+      const refreshHeaders = storedRefreshToken ? { 'X-Refresh-Token': storedRefreshToken } : {};
+
+      const refreshRes = await publicApi.post<{
+        accessToken: string;
+        refreshToken?: string;
+        expiresIn?: number;
+      }>('/v1/auth/refresh', refreshPayload, { headers: refreshHeaders });
+
+      const newAccessToken =
+        (refreshRes as any)?.accessToken || (refreshRes as any)?.data?.accessToken;
+      const newRefreshToken =
+        (refreshRes as any)?.refreshToken || (refreshRes as any)?.data?.refreshToken;
+
+      if (!newAccessToken) {
+        throw new Error('Không nhận được Access Token mới từ máy chủ');
       }
-    }
 
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      if (!response.ok) {
-        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+      // Lưu lại token mới
+      setAccessToken(newAccessToken);
+      if (newRefreshToken) {
+        setRefreshToken(newRefreshToken);
       }
-      return null as any;
+
+      // Thông báo giải phóng toàn bộ hàng đợi đang chờ với token mới
+      processQueue(null, newAccessToken);
+
+      // Thử lại request gốc với token mới
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      return authApi(originalRequest);
+    } catch (refreshErr) {
+      // Refresh thất bại -> Từ chối toàn bộ hàng đợi và xóa session
+      processQueue(refreshErr, null);
+      clearTokens();
+      sessionStorage.removeItem('bake_sip_admin_user');
+      window.dispatchEvent(new CustomEvent('shop_auth_session_expired'));
+      return Promise.reject(new Error('Phiên làm việc đã kết thúc. Vui lòng đăng nhập lại.'));
+    } finally {
+      isRefreshing = false;
     }
-
-    const json: ApiResponse<T> = await response.json();
-
-    if (!response.ok || json.success === false) {
-      throw new Error(json.message || `Yêu cầu thất bại (${json.code || response.status})`);
-    }
-
-    return json.data;
-  } catch (error: any) {
-    console.error(`API Call failed [${options.method || 'GET'} ${path}]:`, error);
-    throw error;
   }
-}
+);
+
+// ---------------------------------------------------------------------------
+// 3. WRAPPER HTTP THÔNG MINH (TƯƠNG THÍCH NGƯỢC)
+// Tự động phân luồng URL:
+// - Bắt đầu bằng /admin/... hoặc /v1/auth/me, /v1/auth/logout => Sử dụng authApi
+// - Các URL còn lại (/v1/products, /v1/config, /v1/orders...) => Sử dụng publicApi
+// ---------------------------------------------------------------------------
+const isAuthRoute = (path: string): boolean => {
+  return (
+    path.startsWith('/admin') ||
+    path.startsWith('/v1/auth/me') ||
+    path.startsWith('/v1/auth/logout')
+  );
+};
 
 export const http = {
-  get: <T = any>(path: string, options?: RequestInit) =>
-    request<T>(path, { ...options, method: 'GET' }),
-  post: <T = any>(path: string, body?: any, options?: RequestInit) =>
-    request<T>(path, {
-      ...options,
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  put: <T = any>(path: string, body?: any, options?: RequestInit) =>
-    request<T>(path, {
-      ...options,
-      method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  patch: <T = any>(path: string, body?: any, options?: RequestInit) =>
-    request<T>(path, {
-      ...options,
-      method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  delete: <T = any>(path: string, options?: RequestInit) =>
-    request<T>(path, { ...options, method: 'DELETE' }),
+  get: <T = any>(path: string, config?: AxiosRequestConfig): Promise<T> => {
+    const client = isAuthRoute(path) ? authApi : publicApi;
+    return client.get(path, config) as unknown as Promise<T>;
+  },
+  post: <T = any>(path: string, body?: any, config?: AxiosRequestConfig): Promise<T> => {
+    const client = isAuthRoute(path) ? authApi : publicApi;
+    return client.post(path, body, config) as unknown as Promise<T>;
+  },
+  put: <T = any>(path: string, body?: any, config?: AxiosRequestConfig): Promise<T> => {
+    const client = isAuthRoute(path) ? authApi : publicApi;
+    return client.put(path, body, config) as unknown as Promise<T>;
+  },
+  patch: <T = any>(path: string, body?: any, config?: AxiosRequestConfig): Promise<T> => {
+    const client = isAuthRoute(path) ? authApi : publicApi;
+    return client.patch(path, body, config) as unknown as Promise<T>;
+  },
+  delete: <T = any>(path: string, config?: AxiosRequestConfig): Promise<T> => {
+    const client = isAuthRoute(path) ? authApi : publicApi;
+    return client.delete(path, config) as unknown as Promise<T>;
+  },
 };
+
+// Hàm request tương thích nếu có component gọi trực tiếp
+export async function request<T = any>(path: string, options: any = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const data = options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined;
+  const config: AxiosRequestConfig = {
+    headers: options.headers,
+    params: options.params,
+  };
+
+  switch (method) {
+    case 'POST':
+      return http.post<T>(path, data, config);
+    case 'PUT':
+      return http.put<T>(path, data, config);
+    case 'PATCH':
+      return http.patch<T>(path, data, config);
+    case 'DELETE':
+      return http.delete<T>(path, config);
+    default:
+      return http.get<T>(path, config);
+  }
+}
