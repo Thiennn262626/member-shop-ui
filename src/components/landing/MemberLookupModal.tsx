@@ -119,11 +119,6 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleQuickSelect = (phone: string) => {
-    setPhoneNumber(phone);
-    handleSearch(phone);
-  };
-
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
@@ -208,7 +203,7 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
                   <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="tel"
-                    placeholder="Nhập số điện thoại đặt hàng (VD: 0988111222)..."
+                    placeholder="Nhập số điện thoại của bạn (VD: 0912345678)..."
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -221,25 +216,6 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
                   className="px-4 sm:px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-amber-300 rounded-2xl text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shrink-0"
                 >
                   Tra Cứu
-                </button>
-              </div>
-
-              {/* Sample Quick Clicks */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500 pt-1">
-                <span>Gợi ý số mẫu:</span>
-                <button
-                  type="button"
-                  onClick={() => handleQuickSelect('0988111222')}
-                  className="px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-mono font-medium transition-colors cursor-pointer"
-                >
-                  0988111222 (Đơn tạm + VIP)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickSelect('0912345678')}
-                  className="px-2 py-0.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-mono font-medium transition-colors cursor-pointer"
-                >
-                  0912345678
                 </button>
               </div>
             </div>

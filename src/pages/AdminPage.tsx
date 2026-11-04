@@ -593,7 +593,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
           </button>
 
           <div className="text-center text-[10px] text-stone-500">
-            Hệ thống Bake & Sip POS v2.5
+            Hệ thống {SHOP_CONFIG.shopName} POS
           </div>
         </div>
       </aside>
@@ -788,7 +788,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
                         <a
                           href={`https://zalo.me/${selectedOrder.customerPhone}?text=${encodeURIComponent(
-                            `Chào ${selectedOrder.customerName}, tiệm bánh Bake & Sip phản hồi về đơn hàng ${selectedOrder.orderCode} của bạn:`
+                            `Chào ${selectedOrder.customerName}, tiệm ${SHOP_CONFIG.shopName} phản hồi về đơn hàng ${selectedOrder.orderCode} của bạn:`
                           )}`}
                           target="_blank"
                           rel="noreferrer"

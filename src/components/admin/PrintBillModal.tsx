@@ -277,8 +277,8 @@ export function PrintBillModal({ order, onClose }: PrintBillModalProps) {
                 {/* Footer */}
                 <div className="pt-4 text-center text-[10px] text-slate-500 space-y-1">
                   <p className="font-medium text-slate-700">Cảm ơn quý khách và hẹn gặp lại! ❤️</p>
-                  <p>Wifi: <span className="font-bold">BakeAndSip_Guest</span> (Pass: 88888888)</p>
-                  <p className="text-[9px] text-slate-400 mt-2">Bake & Sip POS • {new Date().toLocaleTimeString('vi-VN')}</p>
+                  <p>Wifi: <span className="font-bold">BanhTrangCauHai_Guest</span> (Pass: 88888888)</p>
+                  <p className="text-[9px] text-slate-400 mt-2">{shopConfig.shopName} POS • {new Date().toLocaleTimeString('vi-VN')}</p>
                 </div>
               </div>
             ) : (

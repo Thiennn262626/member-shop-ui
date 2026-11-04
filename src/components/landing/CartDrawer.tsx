@@ -706,7 +706,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
                           <Tag className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
-                            placeholder="Mã voucher (VD: BAKESIP10)"
+                            placeholder="Nhập mã ưu đãi giảm giá (nếu có)..."
                             value={promoCodeInput}
                             onChange={(e) => {
                               setPromoCodeInput(e.target.value.toUpperCase());
@@ -774,7 +774,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
                       <input
                         type="tel"
                         required
-                        placeholder="VD: 0988111222 (Nhập để kiểm tra & dùng điểm)"
+                        placeholder="Nhập số điện thoại để tích & dùng điểm..."
                         value={customerPhone}
                         onChange={(e) => handlePhoneInputChange(e.target.value)}
                         className="w-full px-3 py-1.5 sm:py-2 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-amber-600 font-mono shadow-2xs"

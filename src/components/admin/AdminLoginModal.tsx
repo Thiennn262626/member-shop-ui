@@ -91,7 +91,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             </div>
 
             <span className="text-[10px] uppercase tracking-widest text-amber-300 font-extrabold block">
-              {SHOP_CONFIG.shopName.toUpperCase()} &bull; MERCHANT PORTAL
+              {SHOP_CONFIG.shopName.toUpperCase()} &bull; CỔNG QUẢN TRỊ
             </span>
             <h3 className="font-serif font-black text-xl sm:text-2xl mt-1">
               Đăng Nhập Quản Trị & Thu Ngân
@@ -152,12 +152,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-
-            {/* Security note */}
-            <div className="flex items-center gap-2 px-3 py-2 bg-stone-50 border border-stone-200/80 rounded-xl text-[11px] text-stone-500">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Bảo vệ chống Brute-Force (tự động khóa tạm 15 phút nếu sai mã PIN 5 lần).</span>
             </div>
 
             {/* Login Button */}
