@@ -259,9 +259,7 @@ export const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   </div>
                 );
               })
-            ) : (
-              <p className="text-xs text-stone-500 italic">Món này không có nhóm tùy chọn thêm.</p>
-            )}
+            ) : null}
 
             {/* ITEM-LEVEL NOTE INPUT (GHI CHÚ RIÊNG CHO MÓN NÀY) */}
             <div className="pt-2 border-t border-stone-100 space-y-1.5">
