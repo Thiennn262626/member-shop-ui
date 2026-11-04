@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../../context/CartContext';
-import { storeService, SHOP_CONFIG, TIER_CONFIG, calculateShippingFee } from '../../services/storeService';
+import { storeService, TIER_CONFIG, calculateShippingFee } from '../../services/storeService';
 import { useShopStore } from '../../stores/useShopStore';
 import type { Customer, Order, Voucher } from '../../types';
 import { formatCurrency } from '../../utils/format';
@@ -83,7 +83,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
   }, [items]);
 
   // Xử lý đổi điểm theo tỷ lệ của tiệm
-  const pointToVnd = shopConfig.pointToVndRatio || 1000;
+  const pointToVnd = shopConfig.pointToVndRatio || 500;
   const customerAvailablePoints = matchedCustomer ? matchedCustomer.availablePoints : 0;
 
   // Tính các món trong giỏ được chọn đổi bằng điểm
@@ -530,7 +530,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOrderCreated }) => {
                     <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
                   <div className="text-[11px] sm:text-xs text-amber-950 leading-relaxed">
-                    Đơn này tích lũy <strong className="font-extrabold text-amber-900">+{estimatedPoints} điểm</strong> (= {formatCurrency(estimatedPoints * SHOP_CONFIG.pointToVndRatio)}) sau khi hoàn tất!
+                    Đơn này tích lũy <strong className="font-extrabold text-amber-900">+{estimatedPoints} điểm</strong> (= {formatCurrency(estimatedPoints * pointToVnd)}) sau khi hoàn tất!
                   </div>
                 </div>
 

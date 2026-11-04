@@ -14,7 +14,8 @@ import {
   Coffee,
   Check,
 } from 'lucide-react';
-import { SHOP_CONFIG } from '../../constants/shopConstants';
+import { useShopStore } from '../../stores/useShopStore';
+import { formatCurrency } from '../../utils/format';
 
 interface HeroProps {
   onOpenLookup: () => void;
@@ -23,6 +24,7 @@ interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onOpenWheel }) => {
+  const shopConfig = useShopStore((state) => state.shopConfig);
   const [isOrderGuideOpen, setIsOrderGuideOpen] = useState(false);
 
   return (
@@ -53,11 +55,11 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
             {/* Description (Rút gọn tối đa trên mobile để khách thấy thực đơn ngay) */}
             <p className="hidden sm:block text-sm sm:text-base text-stone-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
               Bánh tráng phơi sương Tây Ninh dẻo mềm, ngập tràn khô bò trứng cút sốt bơ me cay béo cùng trà tắc khổng lồ mát lạnh. 
-              Giá học sinh chỉ từ <strong className="text-amber-800">15.000đ - 25.000đ</strong>. Mỗi <strong className="text-stone-900">10.000đ</strong> hóa đơn = <strong className="text-amber-700">1 điểm thưởng</strong>, 
+              Giá học sinh chỉ từ <strong className="text-amber-800">15.000đ - 25.000đ</strong>. Mỗi <strong className="text-stone-900">{formatCurrency(shopConfig.spendToPointRatio || 10000)}</strong> hóa đơn = <strong className="text-amber-700">1 điểm thưởng</strong>, 
               trừ tiền trực tiếp khi chốt đơn qua Zalo!
             </p>
             <p className="sm:hidden text-xs text-stone-600 leading-tight max-w-xs mx-auto">
-              Bánh tráng trộn 15k-25k &bull; Tích 10k = 1 điểm trừ tiền mặt khi chốt đơn!
+              Bánh tráng trộn 15k-25k &bull; Tích {formatCurrency(shopConfig.spendToPointRatio || 10000)} = 1 điểm trừ tiền mặt khi chốt đơn!
             </p>
 
             {/* Action Buttons */}
@@ -93,7 +95,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
             <div className="hidden sm:flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-3 text-xs text-stone-500 font-medium">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>1 Điểm = 1.000đ tiền mặt</span>
+                <span>1 Điểm = {formatCurrency(shopConfig.pointToVndRatio || 500)} tiền mặt</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -117,7 +119,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                   </span>
                   <div>
                     <h3 className="font-serif font-bold text-stone-900 text-sm">
-                      Đặc Quyền Hội Viên {SHOP_CONFIG.shopName}
+                      Đặc Quyền Hội Viên {shopConfig.shopName}
                     </h3>
                     <span className="text-[11px] text-stone-500">Tự động tích theo SĐT</span>
                   </div>
@@ -195,12 +197,12 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                   Hotline & Zalo:
                 </span>
                 <a
-                  href={`https://zalo.me/${SHOP_CONFIG.zaloPhone}`}
+                  href={`https://zalo.me/${shopConfig.zaloPhone}`}
                   target="_blank"
                   rel="noreferrer"
                   className="font-bold text-amber-800 hover:underline"
                 >
-                  {SHOP_CONFIG.hotline}
+                  {shopConfig.hotline}
                 </a>
               </div>
             </div>
@@ -293,7 +295,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                     <span>Áp Dụng Mã Giảm Giá & Tích Điểm VIP</span>
                   </h4>
                   <p className="text-stone-600 leading-relaxed">
-                    Nhập mã khuyến mãi (nếu có) để nhận ưu đãi. Nhập <strong>Số điện thoại</strong> để hệ thống tự động tra cứu điểm thưởng và trừ tiền trực tiếp vào hóa đơn (1 điểm = 1.000đ).
+                    Nhập mã khuyến mãi (nếu có) để nhận ưu đãi. Nhập <strong>Số điện thoại</strong> để hệ thống tự động tra cứu điểm thưởng và trừ tiền trực tiếp vào hóa đơn (1 điểm = {formatCurrency(shopConfig.pointToVndRatio || 500)}).
                   </p>
                 </div>
               </div>
@@ -310,7 +312,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
                   </h4>
                   <p className="text-stone-600 leading-relaxed">
                     Chọn thanh toán <strong>Quét mã VietQR động</strong> (tự điền số tiền và mã đơn chuẩn xác) hoặc <strong>Tiền mặt (COD)</strong> khi nhận bánh tráng. 
-                    Hệ thống sẽ cấp mã đơn <span className="font-mono font-bold text-amber-800">#BS-xxxx</span> và hỗ trợ bạn gửi tin nhắn trực tiếp qua Zalo tiệm để xác nhận nhanh nhất!
+                    Hệ thống sẽ cấp mã đơn <span className="font-mono font-bold text-amber-800">#CH-xxxx</span> và hỗ trợ bạn gửi tin nhắn trực tiếp qua Zalo tiệm để xác nhận nhanh nhất!
                   </p>
                 </div>
               </div>
@@ -330,13 +332,13 @@ export const Hero: React.FC<HeroProps> = ({ onOpenLookup, onScrollToCatalog, onO
             {/* Modal Footer Actions */}
             <div className="border-t border-stone-100 pt-3.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
               <a
-                href={`https://zalo.me/${SHOP_CONFIG.zaloPhone}`}
+                href={`https://zalo.me/${shopConfig.zaloPhone}`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>Chat Zalo Tiệm: {SHOP_CONFIG.hotline}</span>
+                <span>Chat Zalo Tiệm: {shopConfig.hotline}</span>
               </a>
 
               <div className="w-full sm:w-auto flex items-center gap-2">

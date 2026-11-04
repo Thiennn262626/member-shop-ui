@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { storeService, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../services/storeService';
+import { useShopStore } from '../stores/useShopStore';
 import type { AdminUserData, Customer, Order, OrderStatus } from '../types';
 import { formatCurrency, formatDate, formatDateTime, formatPhone } from '../utils/format';
 import { PosOrderCreator } from '../components/admin/PosOrderCreator';
@@ -74,6 +75,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   },
 }) => {
   const isCashier = adminUser.role === 'cashier';
+  const shopConfig = useShopStore((state) => state.shopConfig);
   const [adminView, setAdminView] = useState<AdminViewType>(() => (isCashier ? 'pos' : 'analytics'));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -923,7 +925,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                             className="w-24 px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs font-mono font-bold text-stone-900"
                           />
                           <span className="text-xs text-stone-600">
-                            điểm (= giảm {formatCurrency(discountPointsInput * SHOP_CONFIG.pointToVndRatio)})
+                            điểm (= giảm {formatCurrency(discountPointsInput * (shopConfig.pointToVndRatio || 500))})
                           </span>
                           <button
                             type="button"
@@ -1343,15 +1345,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
                   <div className="space-y-1.5 text-xs text-stone-300">
                     <div className="flex items-center justify-between">
                       <span>Ngân hàng:</span>
-                      <strong className="text-white">{SHOP_CONFIG.bank.bankName}</strong>
+                      <strong className="text-white">{shopConfig.bank?.bankName || SHOP_CONFIG.bank.bankName}</strong>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Số tài khoản:</span>
-                      <strong className="text-amber-300 font-mono font-bold">{SHOP_CONFIG.bank.accountNumber}</strong>
+                      <strong className="text-amber-300 font-mono font-bold">{shopConfig.bank?.accountNumber || SHOP_CONFIG.bank.accountNumber}</strong>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Chủ tài khoản:</span>
-                      <strong className="text-white">{SHOP_CONFIG.bank.accountHolder}</strong>
+                      <strong className="text-white">{shopConfig.bank?.accountHolder || SHOP_CONFIG.bank.accountHolder}</strong>
                     </div>
                   </div>
                 </div>

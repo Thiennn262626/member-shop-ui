@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { storeService, ORDER_STATUS_MAP, SHOP_CONFIG, TIER_CONFIG } from '../../services/storeService';
+import { useShopStore } from '../../stores/useShopStore';
 import type { Customer, Order, OrderStatus, PointTransaction } from '../../types';
 import { formatCurrency, formatDate, formatPhone } from '../../utils/format';
 import { Pagination } from '../common/Pagination';
@@ -37,6 +38,7 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
   initialPhone = '',
   defaultTab = 'orders',
 }) => {
+  const shopConfig = useShopStore((state) => state.shopConfig);
   const [phoneNumber, setPhoneNumber] = useState(initialPhone);
   const [activeTab, setActiveTab] = useState<'orders' | 'card'>(defaultTab);
   const [searchedCustomer, setSearchedCustomer] = useState<Customer | null>(null);
@@ -690,7 +692,7 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
                             <div className="flex items-start justify-between">
                               <div>
                                 <span className="text-[10px] sm:text-xs uppercase tracking-widest text-amber-300 font-bold block">
-                                  {SHOP_CONFIG.shopName.toUpperCase()} &bull; MEMBER PASS
+                                  {(shopConfig.shopName || SHOP_CONFIG.shopName).toUpperCase()} &bull; THẺ HỘI VIÊN
                                 </span>
                                 <h4 className="font-serif text-lg sm:text-2xl font-bold tracking-tight text-white mt-1">
                                   {searchedCustomer.name}
@@ -716,7 +718,7 @@ export const MemberLookupModal: React.FC<MemberLookupModalProps> = ({
                                     {searchedCustomer.availablePoints}
                                   </span>
                                   <span className="text-xs text-white font-medium">
-                                    điểm (= <strong className="text-amber-300">{formatCurrency(searchedCustomer.availablePoints * SHOP_CONFIG.pointToVndRatio)}</strong>)
+                                    điểm (= <strong className="text-amber-300">{formatCurrency(searchedCustomer.availablePoints * (shopConfig.pointToVndRatio || 500))}</strong>)
                                   </span>
                                 </div>
                               </div>

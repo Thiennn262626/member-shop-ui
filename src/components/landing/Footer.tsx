@@ -1,8 +1,11 @@
 import React from 'react';
 import { Phone, MapPin, MessageSquare, ShieldCheck, Clock } from 'lucide-react';
-import { SHOP_CONFIG } from '../../constants/shopConstants';
+import { useShopStore } from '../../stores/useShopStore';
+import { formatCurrency } from '../../utils/format';
 
 export const Footer: React.FC = () => {
+  const shopConfig = useShopStore((state) => state.shopConfig);
+
   return (
     <footer className="bg-stone-900 text-stone-400 py-10 sm:py-14 border-t border-stone-800 text-xs pb-24 sm:pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -15,15 +18,15 @@ export const Footer: React.FC = () => {
               </div>
               <div>
                 <span className="font-serif text-lg font-bold tracking-tight block leading-none">
-                  {SHOP_CONFIG.shopName}
+                  {shopConfig.shopName}
                 </span>
                 <span className="text-[11px] text-amber-400/90 font-medium mt-0.5 block">
-                  {SHOP_CONFIG.tagline}
+                  {shopConfig.tagline}
                 </span>
               </div>
             </div>
             <p className="text-stone-400 max-w-sm leading-relaxed text-xs">
-              Tiệm bánh tráng trộn phơi sương Tây Ninh & đồ ăn vặt chuẩn vị Sài Gòn. Tích lũy điểm thưởng không giới hạn trên từng đơn hàng chốt nhanh qua Zalo.
+              Tiệm bánh tráng trộn phơi sương Tây Ninh & đồ ăn vặt chuẩn vị. Tích lũy điểm thưởng tự động trên từng đơn hàng chốt nhanh qua Zalo.
             </p>
           </div>
 
@@ -34,11 +37,11 @@ export const Footer: React.FC = () => {
             </h4>
             <div className="flex items-center gap-2 text-stone-300">
               <Phone className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Hotline: <strong>{SHOP_CONFIG.hotline}</strong></span>
+              <span>Hotline: <strong>{shopConfig.hotline}</strong></span>
             </div>
             <div className="flex items-start gap-2 text-stone-300">
               <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <span>{SHOP_CONFIG.address}</span>
+              <span>{shopConfig.address}</span>
             </div>
             <div className="flex items-center gap-2 text-stone-300">
               <Clock className="w-4 h-4 text-amber-400 shrink-0" />
@@ -46,7 +49,7 @@ export const Footer: React.FC = () => {
             </div>
             <div className="flex items-center gap-2 text-stone-300">
               <MessageSquare className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>Zalo Đặt Hàng: <strong>{SHOP_CONFIG.zaloPhone}</strong></span>
+              <span>Zalo Đặt Hàng: <strong>{shopConfig.zaloPhone}</strong></span>
             </div>
           </div>
 
@@ -58,15 +61,15 @@ export const Footer: React.FC = () => {
             <div className="space-y-1.5 text-stone-400">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>10.000đ = 1 điểm thưởng</span>
+                <span>{formatCurrency(shopConfig.spendToPointRatio || 10000)} = 1 điểm thưởng</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>1 điểm = 1.000đ khấu trừ tiền mặt</span>
+                <span>1 điểm = {formatCurrency(shopConfig.pointToVndRatio || 500)} khấu trừ tiền mặt</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Điểm bảo lưu vĩnh viễn, không hết hạn</span>
+                <span>Tự động tích điểm theo SĐT khi đặt đơn</span>
               </div>
             </div>
           </div>
@@ -74,7 +77,7 @@ export const Footer: React.FC = () => {
 
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-stone-500">
           <div>
-            &copy; {new Date().getFullYear()} {SHOP_CONFIG.shopName}. All rights reserved.
+            &copy; {new Date().getFullYear()} {shopConfig.shopName}. All rights reserved.
           </div>
           <div className="flex items-center gap-4">
             <span>Thiết kế tối ưu trải nghiệm điện thoại</span>

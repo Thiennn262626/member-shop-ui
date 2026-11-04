@@ -75,10 +75,10 @@ export const ORDER_STATUS_MAP: Record<OrderStatus, OrderStatusInfo> = {
 export const TIER_CONFIG: Record<MemberTier, TierBenefit> = {
   MEMBER: {
     tier: 'MEMBER',
-    label: 'Thành Viên Mới',
+    label: 'Hội Viên Thân Thiết',
     minSpent: 0,
     pointMultiplier: 1.0,
-    perks: ['Tích 10k = 1 điểm', 'Đổi điểm trừ tiền trực tiếp', 'Nhận tin khuyến mãi mới nhất'],
+    perks: ['Tích điểm tự động theo SĐT', 'Đổi điểm trừ tiền mặt trực tiếp', 'Nhận tin khuyến mãi mới nhất'],
     badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
     gradientClass: 'from-stone-900 via-amber-950 to-stone-900',
     cardStyle: {

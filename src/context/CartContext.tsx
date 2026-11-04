@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { SHOP_CONFIG } from '../constants/shopConstants';
+import { useShopStore } from '../stores/useShopStore';
 import type { Product, SelectedOptionChoice } from '../types';
 import { formatCurrency } from '../utils/format';
 
@@ -166,7 +166,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const totalAmount = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const estimatedPoints = Math.floor(totalAmount / SHOP_CONFIG.spendToPointRatio);
+  const shopConfig = useShopStore((state) => state.shopConfig);
+  const estimatedPoints = Math.floor(totalAmount / (shopConfig?.spendToPointRatio || 10000));
 
   return (
     <CartContext.Provider

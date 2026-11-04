@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Search, Sparkles, Star, SlidersHorizontal, ShoppingBag, Store, Gift } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useShopStore } from '../../stores/useShopStore';
-import { SHOP_CONFIG } from '../../services/storeService';
 import type { Product, SelectedOptionChoice } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { ItemCustomizationModal } from './ItemCustomizationModal';
@@ -154,7 +153,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-6">
             {filteredProducts.map((product) => {
               const currentQuantity = getItemQuantity(product.id);
-              const earnedPoints = Math.floor(product.price / SHOP_CONFIG.spendToPointRatio);
+              const earnedPoints = Math.floor(product.price / (shopConfig.spendToPointRatio || 10000));
               const isAnimating = animatingProductId === product.id;
 
               return (
@@ -260,7 +259,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products }) => {
                           <div className="mt-0.5">
                             <span className="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-1 py-0.5 rounded shadow-2xs">
                               <Gift className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-amber-700" />
-                              <span>Đổi: {product.pointsRequiredToRedeem || Math.round(product.price / (shopConfig.pointToVndRatio || 1000))}đ</span>
+                              <span>Đổi: {product.pointsRequiredToRedeem || Math.round(product.price / (shopConfig.pointToVndRatio || 500))}đ</span>
                             </span>
                           </div>
                         )}
