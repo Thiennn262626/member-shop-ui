@@ -23,6 +23,7 @@ import type { AdminRole, MonthlyPayrollSummary, StaffAccount, WorkShift, WorkShi
 import { formatCurrency } from '../../utils/format';
 import { CashierScheduleView } from './CashierScheduleView';
 import { Pagination } from '../common/Pagination';
+import { getDiff, hasChanges, isVersionMismatchError } from '../../utils/diff';
 
 interface StaffManagerProps {
   currentStaff?: StaffAccount;
@@ -345,15 +346,23 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
 
     try {
       if (editingAccount) {
-        await storeService.updateStaffAccount(editingAccount.id, {
-          username: formUsername.trim().toLowerCase(),
+        // Chỉ gửi các trường thực sự thay đổi + version (Partial Update & OCC)
+        const payload = {
           name: formName.trim(),
           role: formRole,
           phone: formPhone.trim() || undefined,
           hourlyRate: Number(formHourlyRate) || 28000,
-          pinCode: formPinCode.trim(),
+          pinCode: formPinCode.trim() || undefined,
           isActive: formIsActive,
-        });
+        };
+
+        const diff = getDiff(editingAccount, payload);
+        if (!hasChanges(diff)) {
+          setFormError('Bạn chưa thay đổi thông tin nào của nhân viên.');
+          return;
+        }
+
+        await storeService.updateStaffAccount(editingAccount.id, diff);
         showToast(`Đã cập nhật nhân viên "${formName}"!`);
       } else {
         await storeService.addStaffAccount({
@@ -371,7 +380,14 @@ export const StaffManager: React.FC<StaffManagerProps> = ({
       setIsAccountModalOpen(false);
       await loadData();
     } catch (err: any) {
-      setFormError(err.message || 'Lỗi khi lưu tài khoản');
+      if (isVersionMismatchError(err)) {
+        setFormError(
+          '⚠️ Tài khoản nhân viên này vừa được cập nhật từ thiết bị khác! Hệ thống đang tải lại dữ liệu mới nhất...'
+        );
+        await loadData();
+      } else {
+        setFormError(err.message || 'Lỗi khi lưu tài khoản');
+      }
     }
   };
 

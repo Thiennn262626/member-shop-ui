@@ -240,6 +240,7 @@ class StoreService {
       paymentStatus?: Order['paymentStatus'];
       shipperInfo?: string;
       discountPointsUsed?: number;
+      version?: number;
     }
   ): Promise<{ order: Order; customer: Customer }> {
     return await apiStoreService.updateOrderStatus(orderCode, updates);
@@ -267,8 +268,8 @@ class StoreService {
     return await apiStoreService.getTransactions(customerId);
   }
 
-  async adjustCustomerPoints(customerId: string, pointsDelta: number, note: string): Promise<Customer> {
-    return await apiStoreService.adjustCustomerPoints(customerId, pointsDelta, note);
+  async adjustCustomerPoints(customerId: string, pointsDelta: number, note: string, version?: number): Promise<Customer> {
+    return await apiStoreService.adjustCustomerPoints(customerId, pointsDelta, note, version);
   }
 
   // --- VOUCHERS ---

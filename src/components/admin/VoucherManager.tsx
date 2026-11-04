@@ -3,6 +3,7 @@ import type { Voucher } from '../../types';
 import { storeService } from '../../services/storeService';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 import { Pagination } from '../common/Pagination';
+import { getDiff, hasChanges, isVersionMismatchError } from '../../utils/diff';
 
 export function VoucherManager() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -104,38 +105,50 @@ export function VoucherManager() {
       return;
     }
 
+    const payload = {
+      code: code.trim().toUpperCase(),
+      title: title.trim(),
+      discountType,
+      discountValue: Number(discountValue),
+      maxDiscountAmount: discountType === 'percent' ? Number(maxDiscountAmount) || undefined : undefined,
+      minOrderValue: Number(minOrderValue) || 0,
+      startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
+      endDate: endDate ? new Date(endDate).toISOString() : new Date(Date.now() + 30 * 86400000).toISOString(),
+      usageLimit: Number(usageLimit) || undefined,
+      isActive,
+    };
+
     try {
       if (editingVoucher) {
-        await storeService.updateVoucher(editingVoucher.id, {
-          code: code.trim().toUpperCase(),
-          title: title.trim(),
-          discountType,
-          discountValue: Number(discountValue),
-          maxDiscountAmount: discountType === 'percent' ? Number(maxDiscountAmount) || undefined : undefined,
-          minOrderValue: Number(minOrderValue) || 0,
-          startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
-          endDate: endDate ? new Date(endDate).toISOString() : new Date(Date.now() + 30 * 86400000).toISOString(),
-          usageLimit: Number(usageLimit) || undefined,
-          isActive,
-        });
+        // Chỉ gửi các trường thực sự thay đổi + version (Partial Update & OCC)
+        const diff = getDiff(editingVoucher, payload);
+        if (!hasChanges(diff)) {
+          setErrorMessage('Bạn chưa thay đổi thông tin nào của mã khuyến mãi.');
+          return;
+        }
+
+        await storeService.updateVoucher(editingVoucher.id, diff);
       } else {
-        await storeService.addVoucher({
-          code: code.trim().toUpperCase(),
-          title: title.trim(),
-          discountType,
-          discountValue: Number(discountValue),
-          maxDiscountAmount: discountType === 'percent' ? Number(maxDiscountAmount) || undefined : undefined,
-          minOrderValue: Number(minOrderValue) || 0,
-          startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
-          endDate: endDate ? new Date(endDate).toISOString() : new Date(Date.now() + 30 * 86400000).toISOString(),
-          usageLimit: Number(usageLimit) || undefined,
-          isActive,
-        });
+        await storeService.addVoucher(payload);
       }
       setIsModalOpen(false);
       await loadData();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Lỗi khi lưu mã khuyến mãi');
+      if (isVersionMismatchError(err)) {
+        setErrorMessage(
+          '⚠️ Mã khuyến mãi vừa được cập nhật từ thiết bị khác! Hệ thống đang tải lại dữ liệu mới nhất...'
+        );
+        await loadData();
+        if (editingVoucher) {
+          const freshList = await storeService.getVouchers(true);
+          const fresh = freshList.find((v) => v.id === editingVoucher.id);
+          if (fresh) {
+            openEditModal(fresh);
+          }
+        }
+      } else {
+        setErrorMessage(err.message || 'Lỗi khi lưu mã khuyến mãi');
+      }
     }
   };
 

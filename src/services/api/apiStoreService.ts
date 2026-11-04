@@ -299,6 +299,7 @@ class ApiStoreService {
       paymentStatus?: Order['paymentStatus'];
       shipperInfo?: string;
       discountPointsUsed?: number;
+      version?: number;
     }
   ): Promise<{ order: Order; customer: Customer }> {
     let targetId = orderCodeOrId;
@@ -337,10 +338,11 @@ class ApiStoreService {
     return [];
   }
 
-  async adjustCustomerPoints(customerId: string, pointsDelta: number, note: string): Promise<Customer> {
+  async adjustCustomerPoints(customerId: string, pointsDelta: number, note: string, version?: number): Promise<Customer> {
     return await authApi.post<any, Customer>(`/admin/customers/${customerId}/adjust-points`, {
       pointsDelta,
       note,
+      version,
     });
   }
 

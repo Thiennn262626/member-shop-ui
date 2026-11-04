@@ -44,6 +44,7 @@ import { ShiftManager } from '../components/admin/ShiftManager';
 import { VoucherManager } from '../components/admin/VoucherManager';
 import { PrintBillModal } from '../components/admin/PrintBillModal';
 import { Pagination } from '../components/common/Pagination';
+import { isVersionMismatchError } from '../utils/diff';
 
 interface AdminPageProps {
   onLogout: () => void;
@@ -221,12 +222,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     setActionSuccess(null);
   };
 
+  const refreshSelectedOrder = async (orderCode: string) => {
+    try {
+      const latestOrders = await storeService.getOrders();
+      setOrders(latestOrders);
+      const fresh = latestOrders.find((o) => o.orderCode === orderCode || o.id === orderCode);
+      if (fresh) setSelectedOrder(fresh);
+    } catch (err) {
+      console.error('Failed to refresh order:', err);
+    }
+  };
+
   const handleConfirmAndPrepare = async () => {
     if (!selectedOrder) return;
     try {
       const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         status: 'confirmed',
         discountPointsUsed: discountPointsInput,
+        version: selectedOrder.version,
       });
 
       setSelectedOrder(updated);
@@ -235,8 +248,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setOrders(latestOrders);
       setActionSuccess(`Đã xác nhận đơn ${updated.orderCode} & Bắt đầu làm bánh.`);
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Lỗi cập nhật đơn';
-      setSearchError(message);
+      if (isVersionMismatchError(e)) {
+        setSearchError('⚠️ Đơn hàng đã được cập nhật từ thiết bị khác! Hệ thống đang tải lại dữ liệu mới nhất...');
+        await refreshSelectedOrder(selectedOrder.orderCode);
+      } else {
+        const message = e instanceof Error ? e.message : 'Lỗi cập nhật đơn';
+        setSearchError(message);
+      }
     }
   };
 
@@ -245,6 +263,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     try {
       const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         paymentStatus,
+        version: selectedOrder.version,
       });
 
       setSelectedOrder(updated);
@@ -259,8 +278,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         setActionSuccess(`Đã chuyển trạng thái về "Chưa thanh toán".`);
       }
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Lỗi cập nhật thanh toán';
-      setSearchError(message);
+      if (isVersionMismatchError(e)) {
+        setSearchError('⚠️ Trạng thái thanh toán đã được cập nhật từ thiết bị khác! Đang tải lại dữ liệu mới nhất...');
+        await refreshSelectedOrder(selectedOrder.orderCode);
+      } else {
+        const message = e instanceof Error ? e.message : 'Lỗi cập nhật thanh toán';
+        setSearchError(message);
+      }
     }
   };
 
@@ -270,6 +294,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         status: 'shipping',
         shipperInfo: shipperNoteInput.trim() || 'Shipper tiệm đang giao',
+        version: selectedOrder.version,
       });
 
       setSelectedOrder(updated);
@@ -278,8 +303,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setOrders(latestOrders);
       setActionSuccess(`Đã chuyển đơn ${updated.orderCode} sang trạng thái "Đang giao hàng".`);
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Lỗi cập nhật giao hàng';
-      setSearchError(message);
+      if (isVersionMismatchError(e)) {
+        setSearchError('⚠️ Trạng thái giao hàng đã được cập nhật từ thiết bị khác! Đang tải lại dữ liệu mới nhất...');
+        await refreshSelectedOrder(selectedOrder.orderCode);
+      } else {
+        const message = e instanceof Error ? e.message : 'Lỗi cập nhật giao hàng';
+        setSearchError(message);
+      }
     }
   };
 
@@ -289,6 +319,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         status: 'completed',
         paymentStatus: 'paid',
+        version: selectedOrder.version,
       });
 
       setSelectedOrder(updated);
@@ -301,8 +332,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         `🎉 Đơn hàng ${updated.orderCode} đã HOÀN TẤT thành công! Đã tích +${updated.earnedPoints} điểm cho ${customer.name}.`
       );
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Lỗi khi hoàn tất đơn';
-      setSearchError(message);
+      if (isVersionMismatchError(e)) {
+        setSearchError('⚠️ Đơn hàng đã được hoàn tất bởi thiết bị khác! Đang tải lại dữ liệu mới nhất...');
+        await refreshSelectedOrder(selectedOrder.orderCode);
+      } else {
+        const message = e instanceof Error ? e.message : 'Lỗi khi hoàn tất đơn';
+        setSearchError(message);
+      }
     }
   };
 
@@ -313,6 +349,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     try {
       const { order: updated, customer } = await storeService.updateOrderStatus(selectedOrder.orderCode, {
         status: 'cancelled',
+        version: selectedOrder.version,
       });
 
       setSelectedOrder(updated);
@@ -321,8 +358,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       setOrders(latestOrders);
       setActionSuccess(`Đã hủy đơn hàng ${updated.orderCode}.`);
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Lỗi khi hủy đơn';
-      setSearchError(message);
+      if (isVersionMismatchError(e)) {
+        setSearchError('⚠️ Đơn hàng đã được thay đổi từ thiết bị khác! Đang tải lại dữ liệu mới nhất...');
+        await refreshSelectedOrder(selectedOrder.orderCode);
+      } else {
+        const message = e instanceof Error ? e.message : 'Lỗi khi hủy đơn';
+        setSearchError(message);
+      }
     }
   };
 

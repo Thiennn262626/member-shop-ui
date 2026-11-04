@@ -13,6 +13,7 @@ import { storeService, TIER_CONFIG } from '../../services/storeService';
 import type { AdminRole, Customer, MemberTier, PointTransaction } from '../../types';
 import { formatCurrency, formatDate, formatPhone } from '../../utils/format';
 import { Pagination } from '../common/Pagination';
+import { isVersionMismatchError } from '../../utils/diff';
 
 interface CustomerManagerProps {
   userRole?: AdminRole;
@@ -118,7 +119,8 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
       const updated = await storeService.adjustCustomerPoints(
         selectedCustomerForAdjust.id,
         pointsDeltaInput,
-        adjustNoteInput.trim()
+        adjustNoteInput.trim(),
+        selectedCustomerForAdjust.version
       );
       const list = await storeService.getCustomers();
       setCustomers(list);
@@ -127,7 +129,14 @@ export const CustomerManager: React.FC<CustomerManagerProps> = ({ userRole = 'ow
         `Đã ${pointsDeltaInput >= 0 ? 'cộng' : 'trừ'} ${Math.abs(pointsDeltaInput)} điểm cho khách hàng ${updated.name}!`
       );
     } catch (err: unknown) {
-      console.error(err);
+      if (isVersionMismatchError(err)) {
+        showToast('⚠️ Điểm thưởng khách hàng vừa được cập nhật trên thiết bị khác! Đang tải lại dữ liệu...');
+        const list = await storeService.getCustomers();
+        setCustomers(list);
+        setSelectedCustomerForAdjust(null);
+      } else {
+        console.error(err);
+      }
     }
   };
 

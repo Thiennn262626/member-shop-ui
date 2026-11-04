@@ -22,6 +22,7 @@ import { useShopStore } from '../../stores/useShopStore';
 import type { AdminRole, ItemOptionGroup, Product } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { Pagination } from '../common/Pagination';
+import { getDiff, hasChanges, isVersionMismatchError } from '../../utils/diff';
 
 // Kho ảnh mẫu F&B chất lượng cao của tiệm bánh & đồ uống
 const SAMPLE_IMAGE_LIBRARY = [
@@ -260,19 +261,41 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
       };
 
       if (editingProduct) {
-        await storeService.updateProduct(editingProduct.id, payload);
+        // Chỉ gửi các trường thực sự thay đổi + version (Partial Update & OCC)
+        const diff = getDiff(editingProduct, payload);
+        if (!hasChanges(diff)) {
+          setFormError('Bạn chưa thay đổi thông tin nào của món ăn.');
+          return;
+        }
+
+        await storeService.updateProduct(editingProduct.id, diff);
         showToast(`Đã cập nhật món "${payload.name}" thành công!`);
       } else {
         await storeService.addProduct(payload);
         showToast(`Đã thêm món "${payload.name}" vào thực đơn!`);
       }
 
-      const pList = await storeService.getProducts();
+      const pList = await storeService.getProducts(true);
       setProducts(pList);
       setIsModalOpen(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi lưu sản phẩm';
-      setFormError(msg);
+      if (isVersionMismatchError(err)) {
+        setFormError(
+          '⚠️ Món ăn đã được cập nhật từ thiết bị khác! Hệ thống đang tải lại dữ liệu mới nhất...'
+        );
+        // Tải lại danh sách món và điền lại vào form
+        const pList = await storeService.getProducts(true);
+        setProducts(pList);
+        if (editingProduct) {
+          const fresh = pList.find((p) => p.id === editingProduct.id);
+          if (fresh) {
+            handleOpenEditModal(fresh);
+          }
+        }
+      } else {
+        const msg = err instanceof Error ? err.message : 'Lỗi khi lưu sản phẩm';
+        setFormError(msg);
+      }
     }
   };
 
@@ -280,7 +303,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
   const handleToggleStatus = async (p: Product) => {
     try {
       const updated = await storeService.toggleProductStatus(p.id);
-      const pList = await storeService.getProducts();
+      const pList = await storeService.getProducts(true);
       setProducts(pList);
       showToast(
         updated.isActive
@@ -288,7 +311,13 @@ export const ProductManager: React.FC<ProductManagerProps> = ({ userRole = 'owne
           : `Đã tạm ngưng món "${p.name}" (Báo hết hàng)!`
       );
     } catch (err: unknown) {
-      console.error(err);
+      if (isVersionMismatchError(err)) {
+        showToast('⚠️ Món này vừa được thay đổi trên thiết bị khác! Đang tải lại dữ liệu...');
+        const pList = await storeService.getProducts(true);
+        setProducts(pList);
+      } else {
+        console.error(err);
+      }
     }
   };
 

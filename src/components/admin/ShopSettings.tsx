@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store,
   QrCode,
@@ -11,10 +11,13 @@ import {
   Truck,
   Plus,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { storeService, SHOP_CONFIG } from '../../services/storeService';
-import type { ShippingTier } from '../../types';
+import { useShopStore } from '../../stores/useShopStore';
+import type { ShippingTier, ShopConfig } from '../../types';
 import { formatCurrency } from '../../utils/format';
+import { getDiff, hasChanges, isVersionMismatchError } from '../../utils/diff';
 
 export const ShopSettings: React.FC = () => {
   const [shopName, setShopName] = useState(SHOP_CONFIG.shopName);
@@ -53,34 +56,45 @@ export const ShopSettings: React.FC = () => {
     ]
   );
 
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [loadedConfig, setLoadedConfig] = useState<ShopConfig | null>(null);
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const applyConfigToForm = useCallback((cfg: ShopConfig) => {
+    setLoadedConfig(cfg);
+    setShopName(cfg.shopName);
+    setTagline(cfg.tagline);
+    setHotline(cfg.hotline);
+    setZaloPhone(cfg.zaloPhone);
+    setAddress(cfg.address);
+    setBankName(cfg.bank.bankName);
+    setAccountNumber(cfg.bank.accountNumber);
+    setAccountHolder(cfg.bank.accountHolder);
+    setSpendToPointRatio(cfg.spendToPointRatio || 10000);
+    setPointToVndRatio(cfg.pointToVndRatio || 1000);
+    if (cfg.delivery) {
+      setDeliveryEnabled(cfg.delivery.enabled !== undefined ? cfg.delivery.enabled : true);
+      setMaxDistanceKm(cfg.delivery.maxDistanceKm || 10);
+      setAreaNote(cfg.delivery.areaNote || '');
+      if (cfg.delivery.tiers) setShippingTiers(cfg.delivery.tiers);
+    }
+  }, []);
+
+  const loadLatestConfig = useCallback(async () => {
+    try {
+      const cfg = await storeService.getShopConfig();
+      if (cfg) {
+        applyConfigToForm(cfg);
+      }
+    } catch (err) {
+      console.error('Failed to load shop config:', err);
+    }
+  }, [applyConfigToForm]);
 
   useEffect(() => {
-    let isMounted = true;
-    storeService.getShopConfig().then((cfg) => {
-      if (isMounted && cfg) {
-        setShopName(cfg.shopName);
-        setTagline(cfg.tagline);
-        setHotline(cfg.hotline);
-        setZaloPhone(cfg.zaloPhone);
-        setAddress(cfg.address);
-        setBankName(cfg.bank.bankName);
-        setAccountNumber(cfg.bank.accountNumber);
-        setAccountHolder(cfg.bank.accountHolder);
-        setSpendToPointRatio(cfg.spendToPointRatio || 10000);
-        setPointToVndRatio(cfg.pointToVndRatio || 1000);
-        if (cfg.delivery) {
-          setDeliveryEnabled(cfg.delivery.enabled !== undefined ? cfg.delivery.enabled : true);
-          setMaxDistanceKm(cfg.delivery.maxDistanceKm || 10);
-          setAreaNote(cfg.delivery.areaNote || '');
-          if (cfg.delivery.tiers) setShippingTiers(cfg.delivery.tiers);
-        }
-      }
-    }).catch(console.error);
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    loadLatestConfig();
+  }, [loadLatestConfig]);
 
   const handleAddTier = () => {
     const newTier: ShippingTier = {
@@ -104,42 +118,82 @@ export const ShopSettings: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await storeService.updateShopConfig({
-        shopName,
-        tagline,
-        hotline,
-        zaloPhone,
-        address,
-        spendToPointRatio: Number(spendToPointRatio) || 10000,
-        pointToVndRatio: Number(pointToVndRatio) || 1000,
-        bank: {
-          bankName,
-          accountNumber,
-          accountHolder,
-        },
-        delivery: {
-          enabled: deliveryEnabled,
-          maxDistanceKm: Number(maxDistanceKm) || 10,
-          areaNote,
-          tiers: shippingTiers,
-        },
-      });
+    if (isSaving) return;
 
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
-    } catch (err) {
-      console.error(err);
+    const currentFormConfig: ShopConfig = {
+      shopName: shopName.trim(),
+      tagline: tagline.trim(),
+      hotline: hotline.trim(),
+      zaloPhone: zaloPhone.trim(),
+      address: address.trim(),
+      spendToPointRatio: Number(spendToPointRatio) || 10000,
+      pointToVndRatio: Number(pointToVndRatio) || 1000,
+      bank: {
+        bankName: bankName.trim(),
+        accountNumber: accountNumber.trim(),
+        accountHolder: accountHolder.trim(),
+      },
+      isOpen: loadedConfig?.isOpen ?? true,
+      pauseReason: loadedConfig?.pauseReason,
+      delivery: {
+        enabled: deliveryEnabled,
+        maxDistanceKm: Number(maxDistanceKm) || 10,
+        areaNote: areaNote.trim(),
+        tiers: shippingTiers,
+      },
+      version: loadedConfig?.version ?? 0,
+    };
+
+    // Chỉ gửi các trường thực sự thay đổi + version (Partial Update & OCC)
+    const diff = loadedConfig ? getDiff(loadedConfig, currentFormConfig) : currentFormConfig;
+    if (!hasChanges(diff)) {
+      setToastMessage('Bạn chưa thay đổi thông tin nào của cửa hàng.');
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const updated = await storeService.updateShopConfig(diff);
+      applyConfigToForm(updated);
+      await useShopStore.getState().fetchShopConfig(true);
+
+      setToastMessage('Đã lưu cấu hình cửa hàng thành công!');
+      setTimeout(() => {
+        setToastMessage(null);
+      }, 3500);
+    } catch (err: any) {
+      if (isVersionMismatchError(err)) {
+        setConflictWarning(
+          '⚠️ Cấu hình cửa hàng vừa được cập nhật từ thiết bị khác! Hệ thống đang tải lại dữ liệu mới nhất...'
+        );
+        // Tự động tải lại phiên bản mới nhất từ máy chủ
+        await loadLatestConfig();
+        await useShopStore.getState().fetchShopConfig(true);
+        setTimeout(() => setConflictWarning(null), 6000);
+      } else {
+        alert(err.message || 'Lỗi khi lưu cấu hình cửa hàng');
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
     <div className="flex-1 p-3 sm:p-6 max-w-5xl mx-auto w-full space-y-6 font-sans">
       {/* Toast Notification */}
-      {savedSuccess && (
+      {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-stone-900 text-amber-300 px-4 py-3 rounded-2xl shadow-xl border border-stone-700 flex items-center gap-2 text-xs font-bold animate-fadeIn">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>Đã lưu cấu hình cửa hàng thành công!</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Cảnh báo xung đột phiên bản (OCC Conflict) */}
+      {conflictWarning && (
+        <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-900 flex items-center gap-3 text-xs sm:text-sm font-semibold animate-pulse">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <span>{conflictWarning}</span>
         </div>
       )}
 

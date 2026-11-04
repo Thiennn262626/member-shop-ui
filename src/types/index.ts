@@ -55,6 +55,7 @@ export interface Customer {
   joinedDate: string;
   createdAt: string;
   updatedAt: string;
+  version?: number;
 }
 
 // 2. Sản phẩm (Tiệm Bánh & Nước)
@@ -76,6 +77,7 @@ export interface Product {
   soldCount: number;
   optionGroups?: ItemOptionGroup[];
   updatedAt: string;
+  version?: number;
 }
 
 // 3. Món trong đơn hàng
@@ -147,6 +149,7 @@ export interface Order {
   cancelledAt?: string;
 
   shipperInfo?: string; // Ghi chú giao hàng / tên shipper nếu có
+  version?: number;
 }
 
 // 6. Lịch sử giao dịch điểm
@@ -197,6 +200,7 @@ export interface ShopConfig {
   isOpen: boolean; // Trạng thái nhận đơn hôm nay (Mở cửa / Tạm nghỉ bán)
   pauseReason?: string; // Lý do tạm nghỉ (nếu có)
   delivery: DeliveryConfig; // Cấu hình giao hàng & phí ship đồng giá theo mốc
+  version?: number;
 }
 
 // 8. Hệ thống Mã Giảm Giá / Voucher Khuyến Mãi
@@ -214,6 +218,7 @@ export interface Voucher {
   usedCount: number; // Đã dùng
   isActive: boolean;
   createdAt: string;
+  version?: number;
 }
 
 export interface VoucherValidationResult {
@@ -278,6 +283,7 @@ export interface StaffAccount {
   isActive: boolean;
   pinCode: string;
   createdAt: string;
+  version?: number;
 }
 
 export interface AdminUserData {
